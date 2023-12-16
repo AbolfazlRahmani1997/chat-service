@@ -1,5 +1,9 @@
 package ws
 
+import (
+	"time"
+)
+
 type Room struct {
 	ID        string             `json:"id"`
 	Name      string             `json:"name"`
@@ -13,14 +17,20 @@ type Hub struct {
 	Register   chan *Client
 	Unregister chan *Client
 	Broadcast  chan *Message
+	MessageService
 }
 
 func NewHub() *Hub {
+	redisRepository := NewRedisRepository()
+	service := MessageService{
+		redisRepository,
+	}
 	return &Hub{
-		Rooms:      make(map[string]*Room),
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		Broadcast:  make(chan *Message, 5),
+		Rooms:          make(map[string]*Room),
+		Register:       make(chan *Client),
+		Unregister:     make(chan *Client),
+		Broadcast:      make(chan *Message, 5),
+		MessageService: service,
 	}
 }
 
@@ -54,9 +64,11 @@ func (h *Hub) Run() {
 		case m := <-h.Broadcast:
 			if _, ok := h.Rooms[m.RoomID]; ok {
 				for _, cl := range h.Rooms[m.RoomID].Clients {
+					h.SetMessage(m.RoomID, time.Now().Format("2006-01-02 15:04:05.002"), m)
 					if cl.Username != m.Username {
 						cl.Message <- m
 					}
+
 				}
 			}
 		}

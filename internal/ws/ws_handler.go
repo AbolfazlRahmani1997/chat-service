@@ -13,14 +13,9 @@ type Handler struct {
 }
 
 func NewHandler(h *Hub) *Handler {
-	redisRepository := NewRedisRepository()
-	service := MessageService{
-		redisRepository,
-	}
 
 	return &Handler{
-		hub:            h,
-		MessageService: service,
+		hub: h,
 	}
 }
 
@@ -66,6 +61,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		c.JSON(http.StatusForbidden, "Access Deny ")
 		return
 	}
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -83,6 +79,11 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		Content:  "A new user has joined the room",
 		RoomID:   roomID,
 		Username: username,
+	}
+
+	err = conn.WriteJSON(h.hub.MessageService.GetMessage(roomID))
+	if err != nil {
+		return
 	}
 
 	h.hub.Register <- cl

@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	_ "context"
+	"encoding/json"
 	_ "fmt"
 	"github.com/redis/go-redis/v9"
 )
@@ -25,10 +26,14 @@ func NewRedisRepository() RedisRepository {
 func (r RedisRepository) SetData(key string, value interface{}) {
 	r.Redis.Set(r.ctx, key, value, 0)
 }
-func (r RedisRepository) GetData(key string) *redis.StringCmd {
-	return r.Redis.Get(r.ctx, key)
+func (r RedisRepository) GetData(key string) *redis.MapStringStringCmd {
+	return r.Redis.HGetAll(r.ctx, key)
 }
 
 func (r RedisRepository) SetMessage(roomId string, messageId string, message Message) *redis.BoolCmd {
-	return r.Redis.HMSet(r.ctx, roomId, messageId, message)
+	out, err := json.Marshal(message)
+	if err != nil {
+		panic(err)
+	}
+	return r.Redis.HMSet(r.ctx, roomId, messageId, string(out))
 }
