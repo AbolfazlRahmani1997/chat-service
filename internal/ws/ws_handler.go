@@ -42,6 +42,7 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, req)
+	h.hub.InsertRoom(*h.hub.Rooms[req.ID])
 }
 
 var upgrader = websocket.Upgrader{

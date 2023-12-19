@@ -15,9 +15,11 @@ type Client struct {
 }
 
 type Message struct {
-	Content  string `json:"content"`
-	RoomID   string `json:"roomId"`
-	Username string `json:"username"`
+	Content    string `json:"content"`
+	RoomID     string `json:"roomId"`
+	Username   string `json:"username"`
+	Created_at string `json:"created_at"`
+	Updated_at string `json:"updated_at"`
 }
 
 func (c *Client) writeMessage() {

@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 )
 
@@ -20,10 +21,11 @@ type Hub struct {
 	MessageService
 }
 
-func NewHub() *Hub {
-	redisRepository := NewRedisRepository()
+func NewHub(client *mongo.Client) *Hub {
+	clientDatabase := client.Database("MessageDB")
+	messageRepository := NewMessageRepository(clientDatabase)
 	service := MessageService{
-		redisRepository,
+		messageRepository,
 	}
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -64,8 +66,9 @@ func (h *Hub) Run() {
 		case m := <-h.Broadcast:
 			if _, ok := h.Rooms[m.RoomID]; ok {
 				for _, cl := range h.Rooms[m.RoomID].Clients {
-					h.SetMessage(m.RoomID, time.Now().Format("2006-01-02 15:04:05.002"), m)
+
 					if cl.Username != m.Username {
+						h.SetMessage(m.RoomID, time.Now().Format("2006-01-02 15:04:05.002"), m)
 						cl.Message <- m
 					}
 
