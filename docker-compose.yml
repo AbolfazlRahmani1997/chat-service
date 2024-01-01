@@ -1,0 +1,26 @@
+services:
+  chat-app:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - chat-redis
+      - chat-mongo
+  chat-redis:
+    image: redis:latest
+    restart: always
+    networks:
+      - chat-redis
+  chat-mongo:
+    image: bitnami/mongodb:latest
+    networks:
+      - chat-mongo
+
+
+networks:
+  chat-redis:
+    driver: bridge
+  chat-mongo:
+    driver: bridge

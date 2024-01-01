@@ -67,8 +67,8 @@ func (h *Hub) Run() {
 			if _, ok := h.Rooms[m.RoomID]; ok {
 				for _, cl := range h.Rooms[m.RoomID].Clients {
 
+					h.SetMessage(m.RoomID, time.Now().Format("2006-01-02 15:04:05.002"), m)
 					if cl.Username != m.Username {
-						h.SetMessage(m.RoomID, time.Now().Format("2006-01-02 15:04:05.002"), m)
 						cl.Message <- m
 					}
 

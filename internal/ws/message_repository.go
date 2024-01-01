@@ -7,6 +7,7 @@ import (
 	"fmt"
 	_ "fmt"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -39,6 +40,17 @@ func (r MongoDBRepository) InsertMessage(message Message) *mongo.InsertOneResult
 		return nil
 	}
 	return one
+}
+
+func (r MongoDBRepository) GetAllMessages(roomId string) []Message {
+	var data []Message
+	condition := bson.M{"roomid": roomId}
+	cur, _ := r.Collection.Collection("messages").Find(context.TODO(), condition)
+	err := cur.All(context.TODO(), &data)
+	if err != nil {
+		return nil
+	}
+	return data
 }
 
 func (r MongoDBRepository) InsertRoom(room Room) *mongo.InsertOneResult {

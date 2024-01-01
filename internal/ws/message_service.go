@@ -1,6 +1,9 @@
 package ws
 
-import "go.mongodb.org/mongo-driver/mongo"
+import (
+	"fmt"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 type MessageService struct {
 	MessageRepository
@@ -23,6 +26,8 @@ func (receiver MessageService) SetMessage(roomId string, messageId string, messa
 
 // GetMessage Get Data From Redis For Paper ChatRoom Message
 func (receiver MessageService) GetMessage(roomId string) map[string]string {
+	message := receiver.MessageRepository.GetAllMessages(roomId)
+	fmt.Println(message[0].RoomID)
 	return receiver.MessageRepository.GetData(roomId).Val()
 }
 
