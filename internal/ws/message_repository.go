@@ -61,6 +61,19 @@ func (r MongoDBRepository) InsertRoom(room Room) *mongo.InsertOneResult {
 	return one
 }
 
+func (r MongoDBRepository) getRoom(roomId string) Room {
+
+	var roomResult Room
+	filter := bson.M{"id": roomId}
+	one := r.Collection.Collection("rooms").FindOne(context.TODO(), filter)
+	err := one.Decode(&roomResult)
+	if err != nil {
+		fmt.Println(err.Error())
+		return Room{}
+	}
+	return roomResult
+}
+
 type RedisRepository struct {
 	Redis *redis.Client
 	ctx   context.Context
@@ -79,16 +92,19 @@ func NewRedisRepository() RedisRepository {
 func (r RedisRepository) SetData(key string, value interface{}) {
 	r.Redis.Set(r.ctx, key, value, 0)
 }
-func (r RedisRepository) GetData(key string) *redis.MapStringStringCmd {
-	data := r.Redis.HRandField(r.ctx, key, 10)
-	fmt.Println(data.Val())
-	return r.Redis.HGetAll(r.ctx, key)
+func (r RedisRepository) GetData(key string) *redis.SliceCmd {
+	data := r.Redis.HRandField(r.ctx, key, 1000)
+	return r.Redis.HMGet(r.ctx, key, data.Val()...)
 }
 
 func (r RedisRepository) SetMessage(roomId string, messageId string, message Message) *redis.BoolCmd {
 	out, err := json.Marshal(message)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 	return r.Redis.HMSet(r.ctx, roomId, messageId, string(out))
+}
+
+func (r MessageRepository) GetRoomById(roomId string) Room {
+	return r.MongoDBRepository.getRoom(roomId)
 }

@@ -32,17 +32,28 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	h.hub.Rooms[req.ID] = &Room{
-		ID:        req.ID,
-		Name:      req.Name,
-		StudentId: req.StudentId,
-		TeacherId: req.TeacherId,
-		Clients:   make(map[string]*Client),
+	room := h.hub.GetRoomById(req.ID)
+	if room.ID != "" {
+		h.hub.Rooms[room.ID] = &Room{
+			ID:        room.ID,
+			Name:      room.Name,
+			StudentId: room.StudentId,
+			TeacherId: room.TeacherId,
+			Clients:   make(map[string]*Client),
+		}
+	} else {
+		h.hub.Rooms[req.ID] = &Room{
+			ID:        req.ID,
+			Name:      req.Name,
+			StudentId: req.StudentId,
+			TeacherId: req.TeacherId,
+			Clients:   make(map[string]*Client),
+		}
+		h.hub.InsertRoom(*h.hub.Rooms[req.ID])
 	}
 
 	c.JSON(http.StatusOK, req)
-	h.hub.InsertRoom(*h.hub.Rooms[req.ID])
+
 }
 
 var upgrader = websocket.Upgrader{

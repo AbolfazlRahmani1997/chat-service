@@ -2,6 +2,7 @@ package ws
 
 import (
 	"log"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -15,11 +16,11 @@ type Client struct {
 }
 
 type Message struct {
-	Content    string `json:"content"`
-	RoomID     string `json:"roomId"`
-	Username   string `json:"username"`
-	Created_at string `json:"created_at"`
-	Updated_at string `json:"updated_at"`
+	Content    string    `json:"content"`
+	RoomID     string    `json:"roomId"`
+	Username   string    `json:"username"`
+	Created_at time.Time `json:"created_at" bson:"created_at"`
+	Updated_at time.Time `json:"updated_at" bson:"updated_at"`
 }
 
 func (c *Client) writeMessage() {

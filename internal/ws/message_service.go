@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -18,16 +17,12 @@ func NewMessageService(repository MessageRepository) MessageService {
 
 // SetMessage Insert Data in Redis And MongoDb (stateless data ,stateFull Data )
 func (receiver MessageService) SetMessage(roomId string, messageId string, message *Message) (bool, error) {
-	message.Created_at = messageId
-	message.Updated_at = messageId
 	receiver.MessageRepository.MongoDBRepository.InsertMessage(*message)
 	return receiver.MessageRepository.SetMessage(roomId, messageId, *message).Val(), nil
 }
 
 // GetMessage Get Data From Redis For Paper ChatRoom Message
-func (receiver MessageService) GetMessage(roomId string) map[string]string {
-	message := receiver.MessageRepository.GetAllMessages(roomId)
-	fmt.Println(message[0].RoomID)
+func (receiver MessageService) GetMessage(roomId string) []interface{} {
 	return receiver.MessageRepository.GetData(roomId).Val()
 }
 
@@ -39,6 +34,7 @@ func (r MessageRepository) insertMessageInDb(message Message) *mongo.InsertOneRe
 func (r MessageRepository) insertRoomInDb(room Room) *mongo.InsertOneResult {
 	return r.InsertRoom(room)
 }
-func (r MessageRepository) updateRoomInDb() {
 
+func (r MessageRepository) getRoom(roomId string) Room {
+	return r.GetRoomById(roomId)
 }
