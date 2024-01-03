@@ -2,6 +2,7 @@ package ws
 
 import (
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 type MessageService struct {
@@ -28,6 +29,7 @@ func (receiver MessageService) GetMessage(roomId string) []interface{} {
 
 // InsertInDb Insert In Db For StateFull
 func (r MessageRepository) insertMessageInDb(message Message) *mongo.InsertOneResult {
+	message.Created_at = time.Now()
 	return r.InsertMessage(message)
 }
 
@@ -37,4 +39,8 @@ func (r MessageRepository) insertRoomInDb(room Room) *mongo.InsertOneResult {
 
 func (r MessageRepository) getRoom(roomId string) Room {
 	return r.GetRoomById(roomId)
+}
+func (r MessageRepository) getAllMessages(roomId string) []Message {
+	messages := r.GetAllMessages(roomId)
+	return messages
 }

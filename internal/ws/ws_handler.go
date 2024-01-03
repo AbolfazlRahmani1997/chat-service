@@ -93,14 +93,13 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		Username: username,
 	}
 
-	err = conn.WriteJSON(h.hub.MessageService.GetMessage(roomID))
+	err = conn.WriteJSON(h.hub.MessageService.GetAllMessages(roomID))
 	if err != nil {
 		return
 	}
 
 	h.hub.Register <- cl
 	h.hub.Broadcast <- m
-
 	go cl.writeMessage()
 	cl.readMessage(h.hub)
 }

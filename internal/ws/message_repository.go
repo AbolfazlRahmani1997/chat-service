@@ -9,6 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type MessageRepository struct {
@@ -45,9 +46,11 @@ func (r MongoDBRepository) InsertMessage(message Message) *mongo.InsertOneResult
 func (r MongoDBRepository) GetAllMessages(roomId string) []Message {
 	var data []Message
 	condition := bson.M{"roomid": roomId}
-	cur, _ := r.Collection.Collection("messages").Find(context.TODO(), condition)
+	opts := options.Find().SetLimit(10)
+	cur, _ := r.Collection.Collection("messages").Find(context.TODO(), condition, opts)
 	err := cur.All(context.TODO(), &data)
 	if err != nil {
+		fmt.Println(err)
 		return nil
 	}
 	return data
@@ -93,7 +96,7 @@ func (r RedisRepository) SetData(key string, value interface{}) {
 	r.Redis.Set(r.ctx, key, value, 0)
 }
 func (r RedisRepository) GetData(key string) *redis.SliceCmd {
-	data := r.Redis.HRandField(r.ctx, key, 1000)
+	data := r.Redis.HRandField(r.ctx, key, 100)
 	return r.Redis.HMGet(r.ctx, key, data.Val()...)
 }
 

@@ -58,7 +58,6 @@ func (c *Client) readMessage(hub *Hub) {
 			RoomID:   c.RoomID,
 			Username: c.Username,
 		}
-
 		hub.Broadcast <- msg
 	}
 }

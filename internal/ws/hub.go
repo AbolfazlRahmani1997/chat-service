@@ -41,7 +41,6 @@ func (h *Hub) Run() {
 		case cl := <-h.Register:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				r := h.Rooms[cl.RoomID]
-
 				if _, ok := r.Clients[cl.ID]; !ok {
 					r.Clients[cl.ID] = cl
 				}
@@ -64,9 +63,9 @@ func (h *Hub) Run() {
 
 		case m := <-h.Broadcast:
 			if _, ok := h.Rooms[m.RoomID]; ok {
+				h.insertMessageInDb(*m)
 				for _, cl := range h.Rooms[m.RoomID].Clients {
 
-					h.insertMessageInDb(*m)
 					if cl.Username != m.Username {
 						cl.Message <- m
 					}
