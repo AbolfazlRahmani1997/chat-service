@@ -8,13 +8,15 @@ import (
 	_ "fmt"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
 
 type MessageRepository struct {
 	MongoDBRepository
-	RedisRepository
+	Redis RedisRepository
 }
 
 type MongoDBRepository struct {
@@ -30,14 +32,21 @@ func NewMessageRepository(client *mongo.Database) MessageRepository {
 
 	return MessageRepository{
 		MongoDBRepository: MongoDBRepository{NewMongoDbRepository(client)},
-		RedisRepository:   NewRedisRepository(),
+		Redis:             NewRedisRepository(),
 	}
 
 }
 
-func (r MongoDBRepository) InsertMessage(message Message) *mongo.InsertOneResult {
+// InsertInDb Insert In Db For StateFull
+func (r MessageRepository) insertMessageInDb(message Message) *mongo.InsertOneResult {
+	message.Created_at = time.Now()
+	return r.insertMessage(message)
+}
+
+func (r MongoDBRepository) insertMessage(message Message) *mongo.InsertOneResult {
 	one, err := r.Collection.Collection("messages").InsertOne(context.TODO(), message)
 	if err != nil {
+		fmt.Println(err)
 		return nil
 	}
 	return one
@@ -45,7 +54,7 @@ func (r MongoDBRepository) InsertMessage(message Message) *mongo.InsertOneResult
 
 func (r MongoDBRepository) GetAllMessages(roomId string) []Message {
 	var data []Message
-	condition := bson.M{"roomid": roomId}
+	condition := bson.M{"roomId": roomId}
 	opts := options.Find().SetLimit(10)
 	cur, _ := r.Collection.Collection("messages").Find(context.TODO(), condition, opts)
 	err := cur.All(context.TODO(), &data)
@@ -53,6 +62,7 @@ func (r MongoDBRepository) GetAllMessages(roomId string) []Message {
 		fmt.Println(err)
 		return nil
 	}
+
 	return data
 }
 
@@ -110,4 +120,46 @@ func (r RedisRepository) SetMessage(roomId string, messageId string, message Mes
 
 func (r MessageRepository) GetRoomById(roomId string) Room {
 	return r.MongoDBRepository.getRoom(roomId)
+}
+func (r MessageRepository) MessageDelivery(id string, clientIds []string) (*mongo.UpdateResult, error) {
+	_id, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.D{{"_id", _id}}
+	update := bson.D{{"$set", bson.D{{"deliver", clientIds}}}}
+	result, err := r.MongoDBRepository.Collection.Collection("messages").UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	fmt.Println(result)
+	return result, err
+}
+
+func (r RedisRepository) GetLen(key string) int64 {
+	return r.Redis.LLen(context.TODO(), key).Val()
+}
+
+func (r RedisRepository) GetMessage(key string) string {
+	return r.Redis.LPop(r.ctx, key).Val()
+}
+func (r RedisRepository) GetNotDeliverMessages(number int, key string) []Message {
+	var messages []Message
+	var message Message
+	for i := 0; i < number; i++ {
+		itemMessage := r.Redis.LPop(context.TODO(), key).Val()
+		if itemMessage != "" {
+			err := json.Unmarshal([]byte(itemMessage), &message)
+			if err != nil {
+				fmt.Println(err)
+				return nil
+			}
+		}
+
+		messages = append(messages, message)
+
+	}
+
+	return messages
+}
+func (r MessageRepository) getNumberNotDelivered(key string) int64 {
+	return r.Redis.GetLen(key)
 }

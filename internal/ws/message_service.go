@@ -1,12 +1,12 @@
 package ws
 
 import (
+	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
 )
 
 type MessageService struct {
-	MessageRepository
+	MessageRepository MessageRepository
 }
 
 // NewMessageService build Service Usage In Hub
@@ -18,19 +18,23 @@ func NewMessageService(repository MessageRepository) MessageService {
 
 // SetMessage Insert Data in Redis And MongoDb (stateless data ,stateFull Data )
 func (receiver MessageService) SetMessage(roomId string, messageId string, message *Message) (bool, error) {
-	receiver.MessageRepository.MongoDBRepository.InsertMessage(*message)
-	return receiver.MessageRepository.SetMessage(roomId, messageId, *message).Val(), nil
+	receiver.MessageRepository.MongoDBRepository.insertMessage(*message)
+	return receiver.MessageRepository.Redis.SetMessage(roomId, messageId, *message).Val(), nil
 }
 
 // GetMessage Get Data From Redis For Paper ChatRoom Message
 func (receiver MessageService) GetMessage(roomId string) []interface{} {
-	return receiver.MessageRepository.GetData(roomId).Val()
+	return receiver.MessageRepository.Redis.GetData(roomId).Val()
 }
 
-// InsertInDb Insert In Db For StateFull
-func (r MessageRepository) insertMessageInDb(message Message) *mongo.InsertOneResult {
-	message.Created_at = time.Now()
-	return r.InsertMessage(message)
+func (receiver MessageService) MessageDelivery(id string, clientIds []string) {
+
+	_, err := receiver.MessageRepository.MessageDelivery(id, clientIds)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 }
 
 func (r MessageRepository) insertRoomInDb(room Room) *mongo.InsertOneResult {
@@ -43,4 +47,7 @@ func (r MessageRepository) getRoom(roomId string) Room {
 func (r MessageRepository) getAllMessages(roomId string) []Message {
 	messages := r.GetAllMessages(roomId)
 	return messages
+}
+func (receiver MessageService) getNotDeliverMessage(number int, key string) []Message {
+	return receiver.MessageRepository.Redis.GetNotDeliverMessages(number, key)
 }

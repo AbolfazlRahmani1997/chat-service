@@ -1,10 +1,18 @@
 package ws
 
 import (
+	"github.com/gorilla/websocket"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"time"
+)
 
-	"github.com/gorilla/websocket"
+type status string
+
+const (
+	online   = "online"
+	offline  = "offline"
+	isTyping = "isTyping"
 )
 
 type Client struct {
@@ -13,14 +21,20 @@ type Client struct {
 	ID       string `json:"id"`
 	RoomID   string `json:"roomId"`
 	Username string `json:"username"`
+	Status   string `json:"status"`
 }
 
 type Message struct {
-	Content    string    `json:"content"`
-	RoomID     string    `json:"roomId"`
-	Username   string    `json:"username"`
-	Created_at time.Time `json:"created_at" bson:"created_at"`
-	Updated_at time.Time `json:"updated_at" bson:"updated_at"`
+	_Id        primitive.ObjectID `bson:"_id"`
+	ID         string             `json:"ID"`
+	Content    string             `json:"Content,omitempty"  bson:"content"`
+	RoomID     string             `json:"RoomID,omitempty"  bson:"roomID"`
+	Username   string             `json:"Username,omitempty" bson:"username" `
+	ClientID   string             `json:"ClientID,omitempty" bson:"clientID"`
+	Deliver    []string           `json:"Deliver,omitempty" bson:"Deliver"`
+	Read       []string           `json:"Read,omitempty" bson:"Read"`
+	Created_at time.Time          `bson:"created_at"`
+	Updated_at time.Time          `bson:"updated_at"`
 }
 
 func (c *Client) writeMessage() {
@@ -52,11 +66,11 @@ func (c *Client) readMessage(hub *Hub) {
 			}
 			break
 		}
-
 		msg := &Message{
 			Content:  string(m),
 			RoomID:   c.RoomID,
 			Username: c.Username,
+			ClientID: c.ID,
 		}
 		hub.Broadcast <- msg
 	}
