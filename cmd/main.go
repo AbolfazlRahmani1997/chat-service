@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+	clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
 	// Connect to MongoDB
 	client, _ := mongo.Connect(context.TODO(), clientOptions)
 	hub := ws.NewHub(client)

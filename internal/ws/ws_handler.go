@@ -2,10 +2,9 @@ package ws
 
 import (
 	"fmt"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"net/http"
 )
 
 type Handler struct {
@@ -73,7 +72,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		c.JSON(http.StatusForbidden, "Access Deny ")
 		return
 	}
-
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -97,20 +95,31 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		return
 	}
 
+	h.hub.Register <- cl
+	go cl.writeMessage()
 	messages := h.hub.MessageRepository.Redis.GetNotDeliverMessages(int(h.hub.MessageRepository.Redis.GetLen(roomID+"."+cl.ID)), roomID+"."+cl.ID)
-	fmt.Println(messages)
-	for _, m := range messages {
-		fmt.Println(m.ID)
-		err = conn.WriteJSON(m)
-		if err != nil {
-			fmt.Print(err)
-			return
+	if ok := len(messages) != 0; ok {
+		for i := len(messages) - 1; i >= 0; i-- {
+			h.hub.Broadcast <- &Message{
+				_Id:        messages[i]._Id,
+				ID:         messages[i].ID,
+				Content:    messages[i].Content,
+				RoomID:     messages[i].RoomID,
+				Username:   messages[i].Username,
+				ClientID:   messages[i].ClientID,
+				Deliver:    messages[i].Deliver,
+				Read:       messages[i].Read,
+				Created_at: messages[i].Created_at,
+				Updated_at: messages[i].Created_at,
+			}
+			if err != nil {
+				return
+			}
 		}
 	}
-	h.hub.Register <- cl
 
-	go cl.writeMessage()
 	cl.readMessage(h.hub)
+
 }
 
 type RoomRes struct {

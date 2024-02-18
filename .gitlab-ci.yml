@@ -1,0 +1,63 @@
+stages:
+  - build
+#   - pre-check
+#   - test
+  - deploy
+
+.docker_login:
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - export CI_COMMIT_TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+
+build:
+  extends: .docker_login
+  stage: build
+  script:
+#    - docker build --network=host --target=GolangChatApp --build-arg gitlab_access_token=$gitlab_access_token -t $CI_REGISTRY_IMAGE/GolangChatApp:$CI_COMMIT_TAG .
+#    - docker push $CI_REGISTRY_IMAGE/GolangChatApp:$CI_COMMIT_TAG
+#    - docker tag $CI_REGISTRY_IMAGE/GolangChatApp:$CI_COMMIT_TAG $CI_REGISTRY_IMAGE/GolangChatApp:latest
+#    - docker push $CI_REGISTRY_IMAGE/GolangChatApp:latest
+
+  only:
+    - develop
+    - master
+    - tags
+
+
+.deploy_helm:
+  stage: deploy
+  script:
+    - export CHART_NAME="golang-helm"
+    - export CI_COMMIT_TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+    - mkdir -p $HOME/.kube
+    - echo ${config} | base64 -d > $HOME/.kube/config
+    - helm repo add $CHART_NAME https://rtler.github.io/helm-chart/ && helm repo update
+    - helm upgrade --install ${project_name} -n ${project_name} $CHART_NAME/$CHART_NAME -f ${values_yaml} --set app.tag=$CI_COMMIT_TAG
+
+
+deploy_dev:
+  extends: .deploy_helm
+  variables:
+    values_yaml: deployment/dev.yaml
+    project_name: chat-service-dev
+    config: "${kube_config_demo}"
+  only:
+      - develop
+
+deploy_test:
+  extends: .deploy_helm
+  variables:
+    values_yaml: deployment/test.yaml
+    project_name: chat-service-test
+    config: "${kube_config}"
+  only:
+      - master
+
+deploy_prod:
+  extends: .deploy_helm
+  variables:
+    values_yaml: deployment/prod.yaml
+    project_name: chat-service-prod
+    config: "${kube_config}"
+  only:
+      - tags

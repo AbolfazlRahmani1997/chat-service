@@ -1,11 +1,10 @@
 package router
 
 import (
-	"server/internal/ws"
-	"time"
-
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"server/internal/ws"
+	"time"
 )
 
 var r *gin.Engine

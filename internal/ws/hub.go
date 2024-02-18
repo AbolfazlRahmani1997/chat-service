@@ -47,18 +47,21 @@ func (h *Hub) Run() {
 		//when user join the chat page
 		case cl := <-h.Register:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
-				r := h.Rooms[cl.RoomID]
-				if _, ok := r.Clients[cl.ID]; !ok {
 
-					r.Clients[cl.ID] = cl
-				} else {
+				r := h.Rooms[cl.RoomID]
+				if _, ok := r.Clients[cl.ID]; ok {
 					cl.Message = make(chan *Message)
+					cl.Status = online
+				} else {
+					r.Clients[cl.ID] = cl
 				}
+				r.Clients[cl.ID] = cl
 			}
 			//when user exit from chat page
 		case cl := <-h.Unregister:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				if _, ok := h.Rooms[cl.RoomID].Clients[cl.ID]; ok {
+					fmt.Println(cl.Status)
 					cl.Status = offline
 					close(cl.Message)
 				}
@@ -72,30 +75,20 @@ func (h *Hub) Run() {
 				m.ID = m._Id.Hex()
 				for _, cl := range h.Rooms[m.RoomID].Clients {
 					if cl.ID != m.ClientID {
-						if cl.Status == online {
-							m.Deliver = append(m.Deliver, m.ClientID)
+						if ok := cl.Status == online; ok {
+							m.Deliver = append(m.Deliver, cl.ID)
 							h.MessageDelivery(m.ID, m.Deliver)
 							cl.Message <- m
 						} else {
-							fmt.Println(m.RoomID + "." + cl.ID)
-
 							message, e := json.Marshal(m)
 							if e != nil {
 								fmt.Println(e)
 							}
-
 							_, err := h.MessageRepository.Redis.Redis.LPush(h.MessageRepository.Redis.ctx, m.RoomID+"."+cl.ID, string(message)).Result()
 							if err != nil {
 								fmt.Println(err)
 								return
 							}
-							//var ta Message
-							//Dm := h.MessageRepository.Redis.Redis.LPop(h.MessageRepository.Redis.ctx, m.RoomID+"."+cl.ID).Val()
-							//err = json.Unmarshal([]byte(Dm), &ta)
-							//if err != nil {
-							//	fmt.Println(err)
-							//	return
-							//}
 
 						}
 
