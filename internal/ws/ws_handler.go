@@ -1,10 +1,10 @@
 package ws
 
 import (
-	"net/http"
-
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"net/http"
 )
 
 type Handler struct {
@@ -13,7 +13,6 @@ type Handler struct {
 }
 
 func NewHandler(h *Hub) *Handler {
-
 	return &Handler{
 		hub: h,
 	}
@@ -32,7 +31,7 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	room := h.hub.GetRoomById(req.ID)
+	room := h.hub.MessageRepository.GetRoomById(req.ID)
 	if room.ID != "" {
 		h.hub.Rooms[room.ID] = &Room{
 			ID:        room.ID,
@@ -49,7 +48,7 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 			TeacherId: req.TeacherId,
 			Clients:   make(map[string]*Client),
 		}
-		h.hub.InsertRoom(*h.hub.Rooms[req.ID])
+		h.hub.MessageRepository.InsertRoom(*h.hub.Rooms[req.ID])
 	}
 
 	c.JSON(http.StatusOK, req)
@@ -73,40 +72,60 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		c.JSON(http.StatusForbidden, "Access Deny ")
 		return
 	}
-
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err != nil {
+		return
+	}
 	cl := &Client{
 		Conn:     conn,
-		Message:  make(chan *Message, 10),
+		Message:  make(chan *Message),
 		ID:       clientID,
 		RoomID:   roomID,
 		Username: username,
+		Status:   online,
 	}
 
-	m := &Message{
-		Content:  "A new user has joined the room",
-		RoomID:   roomID,
-		Username: username,
-	}
-
-	err = conn.WriteJSON(h.hub.MessageService.GetAllMessages(roomID))
+	err = conn.WriteJSON(h.hub.MessageService.MessageRepository.GetAllMessages(roomID))
 	if err != nil {
+		fmt.Print(err)
 		return
 	}
 
 	h.hub.Register <- cl
-	h.hub.Broadcast <- m
 	go cl.writeMessage()
+	messages := h.hub.MessageRepository.Redis.GetNotDeliverMessages(int(h.hub.MessageRepository.Redis.GetLen(roomID+"."+cl.ID)), roomID+"."+cl.ID)
+	if ok := len(messages) != 0; ok {
+		for i := len(messages) - 1; i >= 0; i-- {
+			h.hub.Broadcast <- &Message{
+				_Id:        messages[i]._Id,
+				ID:         messages[i].ID,
+				Content:    messages[i].Content,
+				RoomID:     messages[i].RoomID,
+				Username:   messages[i].Username,
+				ClientID:   messages[i].ClientID,
+				Deliver:    messages[i].Deliver,
+				Read:       messages[i].Read,
+				Created_at: messages[i].Created_at,
+				Updated_at: messages[i].Created_at,
+			}
+			if err != nil {
+				return
+			}
+		}
+	}
+
 	cl.readMessage(h.hub)
+
 }
 
 type RoomRes struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID            string `json:"id" `
+	Name          string `json:"name"`
+	NumberMessage int64  `json:"NumberMessage"`
 }
 
 func (h *Handler) GetRooms(c *gin.Context) {
@@ -114,9 +133,11 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	userId := c.Param("userId")
 	for _, r := range h.hub.Rooms {
 		if r.TeacherId == userId || r.StudentId == userId {
+			fmt.Println(r.ID + "." + userId)
 			rooms = append(rooms, RoomRes{
-				ID:   r.ID,
-				Name: r.Name,
+				ID:            r.ID,
+				Name:          r.Name,
+				NumberMessage: h.hub.MessageRepository.Redis.GetLen(r.ID + "." + userId),
 			})
 		}
 
@@ -133,7 +154,6 @@ type ClientRes struct {
 func (h *Handler) GetClients(c *gin.Context) {
 	var clients []ClientRes
 	roomId := c.Param("roomId")
-
 	if _, ok := h.hub.Rooms[roomId]; !ok {
 		clients = make([]ClientRes, 0)
 		c.JSON(http.StatusOK, clients)
