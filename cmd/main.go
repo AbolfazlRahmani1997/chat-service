@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
@@ -16,6 +17,10 @@ func main() {
 	wsHandler := ws.NewHandler(hub)
 	go hub.Run()
 	router.InitRouter(wsHandler)
-	router.Start("0.0.0.0:8080")
+	err := router.Start("0.0.0.0:8080")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 }
