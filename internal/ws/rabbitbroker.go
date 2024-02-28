@@ -13,7 +13,7 @@ type RabbitMqBroker struct {
 }
 
 func NewRabbitMqBroker(Room chan *Room) RabbitMqBroker {
-	conn, err := amqp.Dial("amqp://guest:guest@192.168.48.7:5672/")
+	conn, err := amqp.Dial("amqp://guest:guest@192.168.48.4:5672/")
 	if err != nil {
 		fmt.Println(err)
 	}

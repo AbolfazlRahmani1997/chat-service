@@ -75,10 +75,11 @@ func (r MongoDBRepository) getRoom(roomId string) Room {
 
 	var roomResult Room
 	filter := bson.M{"id": roomId}
-	one := r.Collection.Collection("rooms").FindOne(context.TODO(), filter)
+
+	one := r.Collection.Collection("rooms").FindOne(context.Background(), filter)
 	err := one.Decode(&roomResult)
 	if err != nil {
-
+		fmt.Println(err)
 		return Room{}
 	}
 	return roomResult

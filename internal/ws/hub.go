@@ -114,7 +114,6 @@ func (h *Hub) Run() {
 			}
 		//when send message
 		case m := <-h.Broadcast:
-
 			if _, ok := h.Rooms[m.RoomID]; ok {
 				m.Deliver = nil
 				m.Read = nil

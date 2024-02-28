@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
 	"io/ioutil"
 	"net/http"
 	"server/internal/ws"
@@ -29,7 +30,7 @@ func InitRouter(wsHandler *ws.Handler) {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
-	r.Use(Auth())
+	//r.Use(Auth())
 	//todo:create from rabbitmq
 	r.POST("/ws/createRoom", wsHandler.CreateRoom)
 	r.GET("/ws/joinRoom/:roomId", wsHandler.JoinRoom)

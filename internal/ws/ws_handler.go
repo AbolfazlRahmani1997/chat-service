@@ -67,29 +67,43 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 
 func (h *Handler) JoinRoom(c *gin.Context) {
 	roomID := c.Param("roomId")
-	clientID := c.GetString("userId")
+	room := h.hub.MessageRepository.GetRoomById(roomID)
+	h.hub.Room <- &room
+	clientID := c.Query("userId")
 	username := c.Query("username")
-	userOwner, _ := in_array(clientID, h.hub.Rooms[roomID].Owner)
-	userWriter, _ := in_array(clientID, h.hub.Rooms[roomID].Writer)
-	if !((userOwner) || (userWriter)) {
+
+	userOwner, _, roles := hasAccess(clientID, room.Members, []string{"Owner", "Writer"})
+	if !(userOwner) {
 		c.JSON(http.StatusForbidden, "Access Deny ")
 		return
 	}
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	cl := &Client{
+		Conn:     conn,
+		ID:       clientID,
+		RoomID:   roomID,
+		Username: username,
+		Status:   online,
+	}
+	if roles == nil {
+		cl.Message = make(chan *Message, 3)
+
+		err := conn.WriteJSON([]string{"templates", "Salam Chetori", "ساعت ازاد کن "})
+		if err != nil {
+			return
+		}
+
+	} else {
+		cl.Message = make(chan *Message)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err != nil {
 		return
-	}
-	cl := &Client{
-		Conn:     conn,
-		Message:  make(chan *Message),
-		ID:       clientID,
-		RoomID:   roomID,
-		Username: username,
-		Status:   online,
 	}
 
 	err = conn.WriteJSON(h.hub.MessageService.MessageRepository.Mongo.GetAllMessages(roomID))
@@ -137,9 +151,9 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	rooms := make([]RoomRes, 0)
 	userId := c.Param("userId")
 	for _, r := range h.hub.Rooms {
-		WriterStatus, _ := in_array(userId, r.Writer)
-		OwnerStatus, _ := in_array(userId, r.Owner)
-		if WriterStatus || OwnerStatus {
+		WriterStatus, Role, _ := hasAccess(userId, r.Members, []string{"Owner", "Writer"})
+		fmt.Println(Role)
+		if WriterStatus {
 			fmt.Println(r.ID + "." + userId)
 			rooms = append(rooms, RoomRes{
 				ID:            r.ID,
@@ -177,16 +191,47 @@ func (h *Handler) GetClients(c *gin.Context) {
 
 	c.JSON(http.StatusOK, clients)
 }
-func in_array(val interface{}, array interface{}) (exists bool, index int) {
+func hasAccess(val interface{}, array interface{}, access interface{}) (exists bool, index int, role interface{}) {
 	exists = false
 	index = -1
-
+	role = nil
 	switch reflect.TypeOf(array).Kind() {
 	case reflect.Slice:
 		s := reflect.ValueOf(array)
+		for i := 0; i < s.Len(); i++ {
+			arrayData := s.Index(i)
+
+			if reflect.DeepEqual(arrayData.Field(0).String(), val.(string)) == true {
+				remissions := reflect.ValueOf(arrayData.Field(1).Interface())
+				for j := 0; j < remissions.Len(); j++ {
+					exist, _ := InArray(arrayData.Field(1).Index(j).String(), access)
+					if exist {
+
+						role = arrayData.Field(1).Interface()
+					}
+
+				}
+				index = i
+				exists = true
+				return
+
+			}
+		}
+	}
+
+	return
+}
+
+func InArray(needle interface{}, haystack interface{}) (exists bool, index int) {
+	exists = false
+	index = -1
+
+	switch reflect.TypeOf(haystack).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(haystack)
 
 		for i := 0; i < s.Len(); i++ {
-			if reflect.DeepEqual(val, s.Index(i).Interface()) == true {
+			if reflect.DeepEqual(needle, s.Index(i).Interface()) == true {
 				index = i
 				exists = true
 				return
