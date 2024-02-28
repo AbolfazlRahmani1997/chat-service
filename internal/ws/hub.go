@@ -34,6 +34,7 @@ type Room struct {
 type Hub struct {
 	Rooms      map[string]*Room
 	Register   chan *Client
+	ReadAble   chan *string
 	Unregister chan *Client
 	Broadcast  chan *Message
 	Room       chan *Room
@@ -55,6 +56,7 @@ func NewHub(client *mongo.Client) *Hub {
 	return &Hub{
 		Rooms:          make(map[string]*Room),
 		Register:       make(chan *Client),
+		ReadAble:       make(chan *string),
 		Unregister:     make(chan *Client),
 		Broadcast:      make(chan *Message, 5),
 		Room:           roomChan,
@@ -69,6 +71,11 @@ func (h *Hub) Run() {
 
 	for {
 		select {
+
+		case messageId := <-h.ReadAble:
+			{
+
+			}
 		case room := <-h.Room:
 			{
 				existRoom := h.MessageRepository.GetRoomById(room.ID)

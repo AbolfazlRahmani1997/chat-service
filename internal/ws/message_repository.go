@@ -84,6 +84,17 @@ func (r MongoDBRepository) getRoom(roomId string) Room {
 	}
 	return roomResult
 }
+func (r MongoDBRepository) getMessage(messageId string) Message {
+	var message Message
+	filter := bson.M{"_id": messageId}
+	one := r.Collection.Collection("messages").FindOne(context.Background(), filter)
+	err := one.Decode(&message)
+	if err != nil {
+		fmt.Println(err)
+		return Message{}
+	}
+	return message
+}
 
 type RedisRepository struct {
 	Redis *redis.Client
@@ -170,4 +181,9 @@ func (r MessageRepository) UpdateRoomById(id string, room Room) *mongo.UpdateRes
 		return nil
 	}
 	return byID
+}
+
+func (r MessageRepository) getMessageById(id string) {
+	filter := bson.D{{"_id", id}}
+	r.Mongo.Collection.Collection("messages").FindOne(context.Background(), filter)
 }
