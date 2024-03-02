@@ -39,7 +39,7 @@ func (receiver *RabbitMqBroker) Consume() {
 			if err != nil {
 				fmt.Println(err)
 			}
-
+			fmt.Println(RoomRequest.Member)
 			receiver.Room <- &Room{
 				ID:      RoomRequest.Id,
 				Name:    RoomRequest.Name,

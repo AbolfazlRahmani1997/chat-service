@@ -68,7 +68,10 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 func (h *Handler) JoinRoom(c *gin.Context) {
 	roomID := c.Param("roomId")
 	room := h.hub.MessageRepository.GetRoomById(roomID)
-	h.hub.Room <- &room
+	if _, ok := h.hub.Rooms[roomID]; !ok {
+		h.hub.Room <- &room
+	}
+
 	clientID := c.Query("userId")
 	username := c.Query("username")
 
@@ -95,6 +98,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		}
 
 	} else {
+
 		cl.Message = make(chan *Message)
 	}
 
@@ -111,9 +115,8 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		fmt.Print(err)
 		return
 	}
-
 	h.hub.Register <- cl
-	go cl.writeMessage()
+
 	messages := h.hub.MessageRepository.Redis.GetNotDeliverMessages(int(h.hub.MessageRepository.Redis.GetLen(roomID+"."+cl.ID)), roomID+"."+cl.ID)
 	if ok := len(messages) != 0; ok {
 		for i := len(messages) - 1; i >= 0; i-- {
@@ -134,7 +137,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 			}
 		}
 	}
-
+	go cl.writeMessage()
 	cl.readMessage(h.hub)
 
 }

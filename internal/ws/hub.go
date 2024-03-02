@@ -71,13 +71,12 @@ func (h *Hub) Run() {
 
 	for {
 		select {
-
-		case messageId := <-h.ReadAble:
-			{
-
-			}
 		case room := <-h.Room:
 			{
+				if _, ok := h.Rooms[room.ID]; ok {
+
+				}
+
 				existRoom := h.MessageRepository.GetRoomById(room.ID)
 				if existRoom.ID != "" {
 					if len(existRoom.Owner) != len(room.Owner) || (len(existRoom.Writer) != len(room.Writer)) {
@@ -97,17 +96,19 @@ func (h *Hub) Run() {
 			}
 		//when user join the chat page
 		case cl := <-h.Register:
-
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 
 				r := h.Rooms[cl.RoomID]
 				if _, ok := r.Clients[cl.ID]; ok {
 					cl.Message = make(chan *Message)
 					cl.Status = online
+
 				} else {
+					fmt.Println(cl.ID)
 					r.Clients[cl.ID] = cl
 				}
 				r.Clients[cl.ID] = cl
+				fmt.Println(len(r.Clients))
 			}
 			//when user exit from chat page
 		case cl := <-h.Unregister:
@@ -127,12 +128,17 @@ func (h *Hub) Run() {
 				m._Id = h.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
 				m.ID = m._Id.Hex()
 				for _, cl := range h.Rooms[m.RoomID].Clients {
+					fmt.Println("roomClients")
+					fmt.Println(cl.ID)
 					if cl.ID != m.ClientID {
 						if ok := cl.Status == online; ok {
 							m.Deliver = append(m.Deliver, cl.ID)
 							h.MessageDelivery(m.ID, m.Deliver)
 							cl.Message <- m
+							fmt.Println(m.Content)
 						} else {
+							fmt.Println("iff")
+							fmt.Println(m.Content)
 							message, e := json.Marshal(m)
 							if e != nil {
 								fmt.Println(e)

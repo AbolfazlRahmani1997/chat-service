@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
@@ -47,8 +48,11 @@ func (c *Client) writeMessage() {
 		if !ok {
 			return
 		}
-
-		c.Conn.WriteJSON(message)
+		err := c.Conn.WriteJSON(message)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 }
 
