@@ -133,7 +133,19 @@ func (r MessageRepository) GetRoomById(roomId string) Room {
 func (r MessageRepository) MessageDelivery(id string, clientIds []string) (*mongo.UpdateResult, error) {
 	_id, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.D{{"_id", _id}}
-	update := bson.D{{"$set", bson.D{{"deliver", clientIds}}}}
+	update := bson.D{{"$set", bson.D{{"Deliver", clientIds}}}}
+	result, err := r.Mongo.Collection.Collection("messages").UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	fmt.Println(result)
+	return result, err
+}
+func (r MessageRepository) MessageRead(id string, clientIds []string) (*mongo.UpdateResult, error) {
+	_id, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.D{{"_id", _id}}
+	update := bson.D{{"$set", bson.D{{"Read", clientIds}}}}
 	result, err := r.Mongo.Collection.Collection("messages").UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		fmt.Println(err)
@@ -183,7 +195,14 @@ func (r MessageRepository) UpdateRoomById(id string, room Room) *mongo.UpdateRes
 	return byID
 }
 
-func (r MessageRepository) getMessageById(id string) {
+func (r MessageRepository) getMessageById(id string) Message {
+	var message Message
 	filter := bson.D{{"_id", id}}
-	r.Mongo.Collection.Collection("messages").FindOne(context.Background(), filter)
+	one := r.Mongo.Collection.Collection("messages").FindOne(context.Background(), filter)
+	err := one.Decode(&message)
+	if err != nil {
+		fmt.Println(err)
+		return Message{}
+	}
+	return message
 }
