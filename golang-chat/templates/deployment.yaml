@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: chat
-          image: git.oteacher.org:5001/oteacher/devops/image-hub/gochat/gochat:latest
+          image: git.oteacher.org:5001/oteacher/devops/image-hub/chat/chat:latest
           ports:
             - containerPort: 8080
       imagePullSecrets:

@@ -4,10 +4,10 @@ metadata:
   name: ingress
 spec:
   rules:
-    - host: oteacher.dev
+    - host: oteacher.org
       http:
         paths:
-          - path: /api
+          - path: /chat
             pathType: Prefix
             backend:
               service:
