@@ -172,6 +172,17 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	c.JSON(http.StatusOK, rooms)
 }
 
+func (h *Handler) ReadMessage(c *gin.Context) {
+	userId := c.Query("userId")
+	roomId := c.Param("roomId")
+	clients := h.hub.Rooms[roomId].Clients
+	conn, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn.WriteJSON("test")
+	client := clients[userId]
+	client.ReadMessage = conn
+	client.seenMessage(h.hub)
+}
+
 type ClientRes struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`

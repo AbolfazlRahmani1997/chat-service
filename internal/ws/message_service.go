@@ -37,6 +37,19 @@ func (receiver MessageService) MessageDelivery(id string, clientIds []string) {
 
 }
 
+func (receiver MessageService) MessageRead(id string, clientId string) {
+
+	messages := receiver.MessageRepository.getMessageById(id)
+	clientIds := messages.Read
+	clientIds = append(clientIds, clientId)
+	_, err := receiver.MessageRepository.MessageRead(id, clientIds)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+}
+
 func (r MessageRepository) insertRoomInDb(room Room) *mongo.InsertOneResult {
 	return r.Mongo.InsertRoom(room)
 }

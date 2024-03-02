@@ -7,17 +7,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// type RoomType string
-//
-// const (
-//
-//	Temporary RoomType = "temporary"
-//	Permanent RoomType = "permanent"
-//
-// )
 type Member struct {
 	Id    string   `json:"Id"`
 	Roles []string `json:"roles"`
+}
+
+type ReadMessage struct {
+	MessageId string `json:"MessageId"`
+	UserId    string `json:"UserId"`
 }
 
 type Room struct {
@@ -34,7 +31,7 @@ type Room struct {
 type Hub struct {
 	Rooms      map[string]*Room
 	Register   chan *Client
-	ReadAble   chan *string
+	ReadAble   chan *ReadMessage
 	Unregister chan *Client
 	Broadcast  chan *Message
 	Room       chan *Room
@@ -56,7 +53,7 @@ func NewHub(client *mongo.Client) *Hub {
 	return &Hub{
 		Rooms:          make(map[string]*Room),
 		Register:       make(chan *Client),
-		ReadAble:       make(chan *string),
+		ReadAble:       make(chan *ReadMessage),
 		Unregister:     make(chan *Client),
 		Broadcast:      make(chan *Message, 5),
 		Room:           roomChan,
@@ -71,6 +68,10 @@ func (h *Hub) Run() {
 
 	for {
 		select {
+		case messageId := <-h.ReadAble:
+			{
+				h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
+			}
 		case room := <-h.Room:
 			{
 				if _, ok := h.Rooms[room.ID]; ok {

@@ -17,12 +17,13 @@ const (
 )
 
 type Client struct {
-	Conn     *websocket.Conn
-	Message  chan *Message
-	ID       string `json:"id"`
-	RoomID   string `json:"roomId"`
-	Username string `json:"username"`
-	Status   string `json:"status"`
+	Conn        *websocket.Conn
+	ReadMessage *websocket.Conn
+	Message     chan *Message
+	ID          string `json:"id"`
+	RoomID      string `json:"roomId"`
+	Username    string `json:"username"`
+	Status      string `json:"status"`
 }
 
 type Message struct {
@@ -77,5 +78,27 @@ func (c *Client) readMessage(hub *Hub) {
 			ClientID: c.ID,
 		}
 		hub.Broadcast <- msg
+	}
+}
+
+func (c *Client) seenMessage(hub *Hub) {
+	defer func() {
+		c.ReadMessage.Close()
+	}()
+
+	for {
+		_, m, err := c.ReadMessage.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+			}
+			break
+		}
+		msg := &ReadMessage{
+			MessageId: string(m),
+			UserId:    c.ID,
+		}
+
+		hub.ReadAble <- msg
 	}
 }

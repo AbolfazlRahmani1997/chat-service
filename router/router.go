@@ -34,6 +34,7 @@ func InitRouter(wsHandler *ws.Handler) {
 	//todo:create from rabbitmq
 	r.POST("/ws/createRoom", wsHandler.CreateRoom)
 	r.GET("/ws/joinRoom/:roomId", wsHandler.JoinRoom)
+	r.GET("/ws/seenMessage/:roomId", wsHandler.ReadMessage)
 	r.GET("/ws/getRooms/:userId", wsHandler.GetRooms)
 	r.GET("/ws/getClients/:roomId", wsHandler.GetClients)
 }
