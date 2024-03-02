@@ -13,10 +13,10 @@ build:
   extends: .docker_login
   stage: build
   script:
-#    - docker build --network=host --target=GolangChatApp --build-arg gitlab_access_token=$gitlab_access_token -t $CI_REGISTRY_IMAGE/GolangChatApp:$CI_COMMIT_TAG .
-#    - docker push $CI_REGISTRY_IMAGE/GolangChatApp:$CI_COMMIT_TAG
-#    - docker tag $CI_REGISTRY_IMAGE/GolangChatApp:$CI_COMMIT_TAG $CI_REGISTRY_IMAGE/GolangChatApp:latest
-#    - docker push $CI_REGISTRY_IMAGE/GolangChatApp:latest
+    - docker build --network=host --target=GolangChatApp --build-arg gitlab_access_token=$gitlab_access_token -t $CI_REGISTRY_IMAGE/GolangChatApp:$CI_COMMIT_TAG .
+    - docker push $CI_REGISTRY_IMAGE/GolangChatApp:$CI_COMMIT_TAG
+    - docker tag $CI_REGISTRY_IMAGE/GolangChatApp:$CI_COMMIT_TAG $CI_REGISTRY_IMAGE/GolangChatApp:latest
+    - docker push $CI_REGISTRY_IMAGE/GolangChatApp:latest
 
   only:
     - develop

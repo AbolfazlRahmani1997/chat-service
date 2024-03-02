@@ -18,7 +18,7 @@ func NewMessageService(repository MessageRepository) MessageService {
 
 // SetMessage Insert Data in Redis And MongoDb (stateless data ,stateFull Data )
 func (receiver MessageService) SetMessage(roomId string, messageId string, message *Message) (bool, error) {
-	receiver.MessageRepository.MongoDBRepository.insertMessage(*message)
+	receiver.MessageRepository.Mongo.insertMessage(*message)
 	return receiver.MessageRepository.Redis.SetMessage(roomId, messageId, *message).Val(), nil
 }
 
@@ -38,14 +38,18 @@ func (receiver MessageService) MessageDelivery(id string, clientIds []string) {
 }
 
 func (r MessageRepository) insertRoomInDb(room Room) *mongo.InsertOneResult {
-	return r.InsertRoom(room)
+	return r.Mongo.InsertRoom(room)
 }
 
 func (r MessageRepository) getRoom(roomId string) Room {
 	return r.GetRoomById(roomId)
 }
+
+func (r MessageRepository) updateRoom(roomId string, room Room) {
+	r.UpdateRoomById(roomId, room)
+}
 func (r MessageRepository) getAllMessages(roomId string) []Message {
-	messages := r.GetAllMessages(roomId)
+	messages := r.Mongo.GetAllMessages(roomId)
 	return messages
 }
 func (receiver MessageService) getNotDeliverMessage(number int, key string) []Message {

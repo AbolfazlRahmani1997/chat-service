@@ -2,10 +2,8 @@ package ws
 
 import (
 	"context"
-	_ "context"
 	"encoding/json"
 	"fmt"
-	_ "fmt"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -15,7 +13,7 @@ import (
 )
 
 type MessageRepository struct {
-	MongoDBRepository
+	Mongo MongoDBRepository
 	Redis RedisRepository
 }
 
@@ -31,22 +29,21 @@ func NewMongoDbRepository(client *mongo.Database) *mongo.Database {
 func NewMessageRepository(client *mongo.Database) MessageRepository {
 
 	return MessageRepository{
-		MongoDBRepository: MongoDBRepository{NewMongoDbRepository(client)},
-		Redis:             NewRedisRepository(),
+		Mongo: MongoDBRepository{NewMongoDbRepository(client)},
+		Redis: NewRedisRepository(),
 	}
 
 }
 
 // InsertInDb Insert In Db For StateFull
 func (r MessageRepository) insertMessageInDb(message Message) *mongo.InsertOneResult {
-	message.Created_at = time.Now()
-	return r.insertMessage(message)
+	message.CreatedAt = time.Now()
+	return r.Mongo.insertMessage(message)
 }
 
 func (r MongoDBRepository) insertMessage(message Message) *mongo.InsertOneResult {
 	one, err := r.Collection.Collection("messages").InsertOne(context.TODO(), message)
 	if err != nil {
-		fmt.Println(err)
 		return nil
 	}
 	return one
@@ -78,13 +75,25 @@ func (r MongoDBRepository) getRoom(roomId string) Room {
 
 	var roomResult Room
 	filter := bson.M{"id": roomId}
-	one := r.Collection.Collection("rooms").FindOne(context.TODO(), filter)
+
+	one := r.Collection.Collection("rooms").FindOne(context.Background(), filter)
 	err := one.Decode(&roomResult)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println(err)
 		return Room{}
 	}
 	return roomResult
+}
+func (r MongoDBRepository) getMessage(messageId string) Message {
+	var message Message
+	filter := bson.M{"_id": messageId}
+	one := r.Collection.Collection("messages").FindOne(context.Background(), filter)
+	err := one.Decode(&message)
+	if err != nil {
+		fmt.Println(err)
+		return Message{}
+	}
+	return message
 }
 
 type RedisRepository struct {
@@ -119,13 +128,13 @@ func (r RedisRepository) SetMessage(roomId string, messageId string, message Mes
 }
 
 func (r MessageRepository) GetRoomById(roomId string) Room {
-	return r.MongoDBRepository.getRoom(roomId)
+	return r.Mongo.getRoom(roomId)
 }
 func (r MessageRepository) MessageDelivery(id string, clientIds []string) (*mongo.UpdateResult, error) {
 	_id, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.D{{"_id", _id}}
 	update := bson.D{{"$set", bson.D{{"deliver", clientIds}}}}
-	result, err := r.MongoDBRepository.Collection.Collection("messages").UpdateOne(context.TODO(), filter, update)
+	result, err := r.Mongo.Collection.Collection("messages").UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -162,4 +171,19 @@ func (r RedisRepository) GetNotDeliverMessages(number int, key string) []Message
 }
 func (r MessageRepository) getNumberNotDelivered(key string) int64 {
 	return r.Redis.GetLen(key)
+}
+
+func (r MessageRepository) UpdateRoomById(id string, room Room) *mongo.UpdateResult {
+	update := bson.D{{"$set", bson.D{{"Writer", room.Writer}, {"Owner", room.Owner}}}}
+	filter := bson.D{{"_id", id}}
+	byID, err := r.Mongo.Collection.Collection("rooms").UpdateByID(context.TODO(), filter, update)
+	if err != nil {
+		return nil
+	}
+	return byID
+}
+
+func (r MessageRepository) getMessageById(id string) {
+	filter := bson.D{{"_id", id}}
+	r.Mongo.Collection.Collection("messages").FindOne(context.Background(), filter)
 }

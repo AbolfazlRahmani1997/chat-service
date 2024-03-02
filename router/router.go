@@ -1,9 +1,15 @@
 package router
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	"io/ioutil"
+	"net/http"
 	"server/internal/ws"
+	"strconv"
 	"time"
 )
 
@@ -24,6 +30,7 @@ func InitRouter(wsHandler *ws.Handler) {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
+	//r.Use(Auth())
 	//todo:create from rabbitmq
 	r.POST("/ws/createRoom", wsHandler.CreateRoom)
 	r.GET("/ws/joinRoom/:roomId", wsHandler.JoinRoom)
@@ -33,4 +40,38 @@ func InitRouter(wsHandler *ws.Handler) {
 
 func Start(addr string) error {
 	return r.Run(addr)
+}
+
+func Auth() gin.HandlerFunc {
+	type User struct {
+		Id int `json:"id"`
+	}
+
+	return func(c *gin.Context) {
+		var user User
+		// Set example variable
+		client := &http.Client{}
+		request, err := http.NewRequest("GET", "http://gateway-backend/api/user", nil)
+		request.Header.Set("Authorization", c.GetHeader("Authorization"))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		res, err := client.Do(request)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("sendRequest")
+		body, _ := ioutil.ReadAll(res.Body)
+
+		derr := json.Unmarshal(body, &user)
+
+		if derr != nil {
+			fmt.Println(derr)
+		}
+		c.Set("userId", strconv.Itoa(user.Id))
+		c.Next()
+
+	}
+
 }

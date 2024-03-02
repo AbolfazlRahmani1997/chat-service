@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
@@ -25,16 +26,16 @@ type Client struct {
 }
 
 type Message struct {
-	_Id        primitive.ObjectID `bson:"_id"`
-	ID         string             `json:"ID"`
-	Content    string             `json:"Content,omitempty"  bson:"content"`
-	RoomID     string             `json:"RoomID,omitempty"  bson:"roomID"`
-	Username   string             `json:"Username,omitempty" bson:"username" `
-	ClientID   string             `json:"ClientID,omitempty" bson:"clientID"`
-	Deliver    []string           `json:"Deliver,omitempty" bson:"Deliver"`
-	Read       []string           `json:"Read,omitempty" bson:"Read"`
-	Created_at time.Time          `bson:"created_at"`
-	Updated_at time.Time          `bson:"updated_at"`
+	_Id       primitive.ObjectID `bson:"_id"`
+	ID        string             `json:"ID"`
+	Content   string             `json:"Content,omitempty"  bson:"content"`
+	RoomID    string             `json:"RoomID,omitempty"  bson:"roomID"`
+	Username  string             `json:"Username,omitempty" bson:"username" `
+	ClientID  string             `json:"ClientID,omitempty" bson:"clientID"`
+	Deliver   []string           `json:"Deliver,omitempty" bson:"Deliver"`
+	Read      []string           `json:"Read,omitempty" bson:"Read"`
+	CreatedAt time.Time          `bson:"created_at"`
+	UpdatedAt time.Time          `bson:"updated_at"`
 }
 
 func (c *Client) writeMessage() {
@@ -47,8 +48,11 @@ func (c *Client) writeMessage() {
 		if !ok {
 			return
 		}
-
-		c.Conn.WriteJSON(message)
+		err := c.Conn.WriteJSON(message)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 }
 
