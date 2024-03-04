@@ -39,7 +39,7 @@ deploy_dev:
   extends: .deploy_helm
   variables:
     values_yaml: deployment/dev.yaml
-    project_name: chat-service-dev
+    project_name: chat-dev
     config: "${kube_config_demo}"
   only:
       - develop
@@ -48,7 +48,7 @@ deploy_test:
   extends: .deploy_helm
   variables:
     values_yaml: deployment/test.yaml
-    project_name: chat-service-test
+    project_name: chat-test
     config: "${kube_config}"
   only:
       - master
@@ -57,7 +57,7 @@ deploy_prod:
   extends: .deploy_helm
   variables:
     values_yaml: deployment/prod.yaml
-    project_name: chat-service-prod
+    project_name: chat-prod
     config: "${kube_config}"
   only:
       - tags

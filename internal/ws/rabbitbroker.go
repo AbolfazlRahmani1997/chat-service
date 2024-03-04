@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"os"
 	"sync"
 )
 
@@ -13,7 +14,9 @@ type RabbitMqBroker struct {
 }
 
 func NewRabbitMqBroker(Room chan *Room) RabbitMqBroker {
-	conn, err := amqp.Dial("amqp://guest:guest@192.168.48.4:5672/")
+
+	RabbitMqUrl := fmt.Sprintf("amqp://%s:%s@%s:5672/", os.Getenv("RABBITMQ_USER"), os.Getenv("RABBITMQ_PASSWORD"), os.Getenv("RABBITMQ_URL"))
+	conn, err := amqp.Dial(RabbitMqUrl)
 	if err != nil {
 		fmt.Println(err)
 	}
