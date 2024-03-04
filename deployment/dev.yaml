@@ -1,5 +1,5 @@
 app:
-  repository: git.oteacher.org:5001/oteacherc/chat
+  repository: git.oteacher.org:5001/oteacher/chat
   tag: "latest"
   pullPolicy: Always
   env:
