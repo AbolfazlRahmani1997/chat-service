@@ -7,7 +7,7 @@ app:
     APP_ENV: "dev"
     MONGO_DB_HOST: 10.0.0.15
     MONGO_DB_PORT: 27017
-    MONGO_DB_DATABASE: chat
+    MONGO_DB_DATABASE: chat_dev
     MONGO_DB_USERNAME: amir
     MONGO_DB_PASSWORD: d55t1kq6tg4p1ca2
     RABBITMQ_HOST: rabbit-dev-rabbitmq.rabbit-dev
@@ -19,8 +19,6 @@ app:
     REDIS_HOST: cache-master
     REDIS_PASSWORD: null
     REDIS_PORT: 6379
-
-
 
 
     PUBLIC_GATEWAY_URL: https://dev.oteacher.org
@@ -78,7 +76,7 @@ ingress:
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
-    - host: chat.dev.oteacher.org
+    - host: dev.oteacher.org
       paths:
         - path: /chat
           pathType: Prefix

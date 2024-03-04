@@ -1,4 +1,8 @@
 FROM git.oteacher.org:5001/oteacher/devops/image-hub/golang:1.22 as golangchatapp
+
+RUN echo https://mirror.arvancloud.ir/alpine/v3.17/main > /etc/apk/repositories
+RUN echo https://mirror.arvancloud.ir/alpine/v3.17/community >> /etc/apk/repositories
+
 ENV GO111MODULE=on
 WORKDIR /app
 

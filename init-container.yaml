@@ -29,6 +29,6 @@ spec:
     spec:
       containers:
         - name: app
-          image: localhost:5000/oteacher/devops/image-hub/golang:latest
+          image: git.oteacher.org:5001/chat:latest
           ports:
             - containerPort: 8080
