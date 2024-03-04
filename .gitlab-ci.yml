@@ -31,7 +31,7 @@ build:
     - export CI_COMMIT_TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
     - mkdir -p $HOME/.kube
     - echo ${config} | base64 -d > $HOME/.kube/config
-#    - helm repo add $CHART_NAME https://rtler.github.io/helm-chart/ && helm repo update
+    - helm repo add $CHART_NAME https://rtler.github.io/helm-chart/ && helm repo update
     - helm upgrade --install ${project_name} -n ${project_name} $CHART_NAME/$CHART_NAME -f ${values_yaml} --set app.tag=$CI_COMMIT_TAG
 
 
