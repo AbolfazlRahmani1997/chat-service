@@ -29,8 +29,6 @@ spec:
     spec:
       containers:
         - name: app
-          image: git.oteacher.org:5001/oteacher/devops/image-hub/gochat/gochat:latest
+          image: localhost:5000/oteacher/devops/image-hub/golang:latest
           ports:
             - containerPort: 8080
-      imagePullSecrets:
-        - name: registry-credential
