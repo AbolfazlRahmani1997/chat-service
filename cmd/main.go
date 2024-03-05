@@ -12,9 +12,12 @@ import (
 
 func main() {
 
-	mongoUrl := fmt.Sprintf("mongodb://%s:27017", os.Getenv("MongoDbUrl"))
-	clientOptions := options.Client().ApplyURI(mongoUrl)
-	// Connect to MongoDB
+	mongoUrl := fmt.Sprintf("mongodb://%s:27017", os.Getenv("MONGO_DB_HOST"))
+	credential := options.Credential{
+		Username: os.Getenv("MONGO_DB_USERNAME"),
+		Password: os.Getenv("MONGO_DB_PASSWORD"),
+	}
+	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential)
 	client, _ := mongo.Connect(context.TODO(), clientOptions)
 	hub := ws.NewHub(client)
 	wsHandler := ws.NewHandler(hub)
