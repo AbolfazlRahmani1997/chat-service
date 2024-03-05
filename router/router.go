@@ -31,11 +31,11 @@ func InitRouter(wsHandler *ws.Handler) {
 	}))
 	//r.Use(Auth())
 	//todo:create from rabbitmq
-	r.POST("/ws/createRoom", wsHandler.CreateRoom)
-	r.GET("/ws/joinRoom/:roomId", wsHandler.JoinRoom)
-	r.GET("/ws/seenMessage/:roomId", wsHandler.ReadMessage)
-	r.GET("/ws/getRooms/:userId", wsHandler.GetRooms)
-	r.GET("/ws/getClients/:roomId", wsHandler.GetClients)
+	r.POST("/chat/ws/createRoom", wsHandler.CreateRoom)
+	r.GET("/chat/ws/joinRoom/:roomId", wsHandler.JoinRoom)
+	r.GET("/chat/ws/seenMessage/:roomId", wsHandler.ReadMessage)
+	r.GET("/chat/ws/getRooms/:userId", wsHandler.GetRooms)
+	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
 }
 
 func Start(addr string) error {
