@@ -27,7 +27,7 @@ func main() {
 	wsHandler := ws.NewHandler(hub)
 	go hub.Run()
 	router.InitRouter(wsHandler)
-	err = router.Start("0.0.0.0:8080")
+	err = router.Start("0.0.0.0:8080/chat")
 	if err != nil {
 		fmt.Println(err)
 		return
