@@ -19,12 +19,15 @@ func main() {
 	}
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential).SetServerAPIOptions(serverAPI)
-	client, _ := mongo.Connect(context.TODO(), clientOptions)
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		fmt.Println(err)
+	}
 	hub := ws.NewHub(client)
 	wsHandler := ws.NewHandler(hub)
 	go hub.Run()
 	router.InitRouter(wsHandler)
-	err := router.Start("0.0.0.0:8080")
+	err = router.Start("0.0.0.0:8080")
 	if err != nil {
 		fmt.Println(err)
 		return
