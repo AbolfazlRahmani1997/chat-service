@@ -15,6 +15,7 @@ type RabbitMqBroker struct {
 func NewRabbitMqBroker(Room chan *Room) RabbitMqBroker {
 
 	RabbitMqUrl := fmt.Sprintf("amqp://user:5KagXebV8DXNeQWa@rabbit-dev-rabbitmq.rabbit-dev:5672/")
+
 	fmt.Println(RabbitMqUrl)
 	conn, err := amqp.Dial(RabbitMqUrl)
 	if err != nil {
