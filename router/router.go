@@ -16,7 +16,6 @@ import (
 var r *gin.Engine
 
 func InitRouter(wsHandler *ws.Handler) {
-	gin.SetMode(gin.ReleaseMode)
 	r = gin.Default()
 
 	r.Use(cors.New(cors.Config{
