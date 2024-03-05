@@ -27,6 +27,7 @@ app:
     MAIN_URL: http://main-service-dev-laravel-helm.main-service-dev/
     PAYMENT_URL: http://payment-dev-laravel-helm.payment-dev/
     DISCOUNT_URL: http://discount-service-dev-laravel-helm.discount-service-dev/
+    CHAT_URL: http://chat-dev-golang-helm.chat-dev:8080
 
   web:
     enabled: true
