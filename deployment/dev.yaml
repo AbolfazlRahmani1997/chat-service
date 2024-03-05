@@ -71,9 +71,10 @@ service:
   port: 8080
 
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
+  enabled: true
+  className: "nginx"
+  annotations:
+    cloud.networking.sotoon.ir/load-balancer-external-ip: oteacher-ingress-nginx-lb
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
