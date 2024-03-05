@@ -17,6 +17,7 @@ func main() {
 		Username: os.Getenv("MONGO_DB_USERNAME"),
 		Password: os.Getenv("MONGO_DB_PASSWORD"),
 	}
+	fmt.Println(mongoUrl)
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential).SetServerAPIOptions(serverAPI)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
