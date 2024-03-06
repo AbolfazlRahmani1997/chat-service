@@ -48,9 +48,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	//mqBroker := NewRabbitMqBroker(roomChan)
-	//
-	//mqBroker.Consume()
+	mqBroker := NewRabbitMqBroker(roomChan)
+
+	mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
