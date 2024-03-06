@@ -41,7 +41,7 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	room := h.hub.MessageRepository.GetRoomById(req.ID)
+	room := h.hub.MessageService.MessageRepository.GetRoomById(req.ID)
 	if room.ID != "" {
 		h.hub.Rooms[room.ID] = &Room{
 			ID:      room.ID,
@@ -58,7 +58,7 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 			Writer:  req.Writer,
 			Clients: make(map[string]*Client),
 		}
-		h.hub.MessageRepository.Mongo.InsertRoom(*h.hub.Rooms[req.ID])
+		h.hub.MessageService.MessageRepository.Mongo.InsertRoom(*h.hub.Rooms[req.ID])
 	}
 
 	c.JSON(http.StatusOK, req)
@@ -67,20 +67,19 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 
 func (h *Handler) JoinRoom(c *gin.Context) {
 	roomID := c.Param("roomId")
-	room := h.hub.MessageRepository.GetRoomById(roomID)
+
+	room := h.hub.MessageService.MessageRepository.GetRoomById(roomID)
 	if _, ok := h.hub.Rooms[roomID]; !ok {
 		h.hub.Room <- &room
 	}
-
 	clientID := c.Query("userId")
 	username := c.Query("username")
-
+	//todo request has room
 	userOwner, _, roles := hasAccess(clientID, room.Members, []string{"Owner", "Writer"})
 	if !(userOwner) {
 		c.JSON(http.StatusForbidden, "Access Deny ")
 		return
 	}
-
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	cl := &Client{
 		Conn:     conn,
@@ -101,7 +100,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 
 		cl.Message = make(chan *Message)
 	}
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -110,18 +108,14 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	err = conn.WriteJSON(h.hub.MessageService.MessageRepository.Mongo.GetAllMessages(roomID))
-	if err != nil {
-		fmt.Print(err)
-		return
-	}
 	h.hub.Register <- cl
 
-	messages := h.hub.MessageRepository.Redis.GetNotDeliverMessages(int(h.hub.MessageRepository.Redis.GetLen(roomID+"."+cl.ID)), roomID+"."+cl.ID)
+	go cl.writeMessage()
+
+	messages := h.hub.MessageService.MessageRepository.Mongo.GetMessageNotDelivery(roomID, clientID)
 	if ok := len(messages) != 0; ok {
 		for i := len(messages) - 1; i >= 0; i-- {
 			h.hub.Broadcast <- &Message{
-				_Id:       messages[i]._Id,
 				ID:        messages[i].ID,
 				Content:   messages[i].Content,
 				RoomID:    messages[i].RoomID,
@@ -137,7 +131,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 			}
 		}
 	}
-	go cl.writeMessage()
 	cl.readMessage(h.hub)
 
 }
@@ -153,23 +146,24 @@ type RoomRes struct {
 func (h *Handler) GetRooms(c *gin.Context) {
 	rooms := make([]RoomRes, 0)
 	userId := c.Param("userId")
+	room := h.hub.RoomService.GetMyRoom(userId)
+	fmt.Println(room)
 	for _, r := range h.hub.Rooms {
 		WriterStatus, Role, _ := hasAccess(userId, r.Members, []string{"Owner", "Writer"})
 		fmt.Println(Role)
 		if WriterStatus {
 			fmt.Println(r.ID + "." + userId)
 			rooms = append(rooms, RoomRes{
-				ID:            r.ID,
-				Name:          r.Name,
-				NumberMessage: h.hub.MessageRepository.Redis.GetLen(r.ID + "." + userId),
-				Writer:        r.Writer,
-				Owner:         r.Owner,
+				ID:     r.ID,
+				Name:   r.Name,
+				Writer: r.Writer,
+				Owner:  r.Owner,
 			})
 		}
 
 	}
 
-	c.JSON(http.StatusOK, rooms)
+	c.JSON(http.StatusOK, room)
 }
 
 func (h *Handler) ReadMessage(c *gin.Context) {
@@ -177,7 +171,6 @@ func (h *Handler) ReadMessage(c *gin.Context) {
 	roomId := c.Param("roomId")
 	clients := h.hub.Rooms[roomId].Clients
 	conn, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
-	conn.WriteJSON("test")
 	client := clients[userId]
 	client.ReadMessage = conn
 	client.seenMessage(h.hub)
@@ -195,7 +188,6 @@ func (h *Handler) GetClients(c *gin.Context) {
 		clients = make([]ClientRes, 0)
 		c.JSON(http.StatusOK, clients)
 	}
-
 	for _, c := range h.hub.Rooms[roomId].Clients {
 		clients = append(clients, ClientRes{
 			ID:       c.ID,

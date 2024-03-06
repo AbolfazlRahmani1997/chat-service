@@ -16,7 +16,11 @@ func main() {
 		Username: "amir",
 		Password: "d55t1kq6tg4p1ca2",
 	}
-	fmt.Println(mongoUrl)
+
+	//credential := options.Credential{
+	//	//Username: "amir",
+	//	//Password: "d55t1kq6tg4p1ca2",
+	//}
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential).SetServerAPIOptions(serverAPI)
 	client, err := mongo.Connect(context.TODO(), clientOptions)

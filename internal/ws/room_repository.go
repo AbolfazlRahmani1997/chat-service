@@ -27,6 +27,20 @@ func (r RoomMongoRepository) getById(roomId string) Room {
 	return room
 }
 
+func (receiver RoomMongoRepository) GetMyRooms(userId string) []Room {
+	var rooms []Room
+	filter := bson.M{
+		"members.id": userId,
+	}
+
+	cur, _ := receiver.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter)
+	err := cur.All(context.TODO(), &rooms)
+	if err != nil {
+		return rooms
+	}
+	return rooms
+}
+
 func (r RoomMongoRepository) insert(room Room) interface{} {
 	result, _ := r.MongoDbRepository.Collection("rooms").InsertOne(context.TODO(), room)
 	return result

@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"encoding/json"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,19 +28,22 @@ type Room struct {
 }
 
 type Hub struct {
-	Rooms      map[string]*Room
-	Register   chan *Client
-	ReadAble   chan *ReadMessage
-	Unregister chan *Client
-	Broadcast  chan *Message
-	Room       chan *Room
-	MessageService
-	RoomBroker RoomBrokerInfrastructure
+	Rooms          map[string]*Room
+	Register       chan *Client
+	ReadAble       chan *ReadMessage
+	Unregister     chan *Client
+	Broadcast      chan *Message
+	Room           chan *Room
+	MessageService MessageService
+	RoomService    RoomService
+	RoomBroker     RoomBrokerInfrastructure
 }
 
 func NewHub(client *mongo.Client) *Hub {
 	clientDatabase := client.Database("MessageDB")
 	messageRepository := NewMessageRepository(clientDatabase)
+	RoomRepository := NewRoomRepository(clientDatabase)
+	RoomService := NewRoomService(RoomRepository)
 	service := MessageService{
 		messageRepository,
 	}
@@ -58,6 +60,7 @@ func NewHub(client *mongo.Client) *Hub {
 		Broadcast:      make(chan *Message, 5),
 		Room:           roomChan,
 		MessageService: service,
+		RoomService:    RoomService,
 	}
 
 }
@@ -74,27 +77,9 @@ func (h *Hub) Run() {
 			}
 		case room := <-h.Room:
 			{
-				if _, ok := h.Rooms[room.ID]; ok {
-
-				}
-
-				existRoom := h.MessageRepository.GetRoomById(room.ID)
-				if existRoom.ID != "" {
-					if len(existRoom.Owner) != len(room.Owner) || (len(existRoom.Writer) != len(room.Writer)) {
-						h.MessageRepository.UpdateRoomById(room._Id.String(), *room)
-					}
-				} else {
-					h.MessageRepository.insertRoomInDb(*room)
-				}
-				h.Rooms[room.ID] = &Room{
-					ID:      room.ID,
-					Name:    room.Name,
-					Owner:   room.Owner,
-					Writer:  room.Writer,
-					Clients: make(map[string]*Client),
-				}
-
+				h.MessageService.MessageRepository.insertRoomInDb(*room)
 			}
+
 		//when user join the chat page
 		case cl := <-h.Register:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
@@ -113,45 +98,33 @@ func (h *Hub) Run() {
 			}
 			//when user exit from chat page
 		case cl := <-h.Unregister:
-
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				if _, ok := h.Rooms[cl.RoomID].Clients[cl.ID]; ok {
 					fmt.Println(cl.Status)
-					cl.Status = offline
+
 					close(cl.Message)
+					delete(h.Rooms[cl.RoomID].Clients, cl.ID)
+				}
+				if ok := len(h.Rooms[cl.RoomID].Clients) == 0; ok {
+					delete(h.Rooms, cl.ID)
 				}
 			}
 		//when send message
 		case m := <-h.Broadcast:
 			if _, ok := h.Rooms[m.RoomID]; ok {
-				m.Deliver = nil
-				m.Read = nil
-				m._Id = h.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
-				m.ID = m._Id.Hex()
+				if m.ID.IsZero() {
+					m.Deliver = nil
+					m.Read = nil
+					m.ID = h.MessageService.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
+				}
 				for _, cl := range h.Rooms[m.RoomID].Clients {
-					fmt.Println("roomClients")
-					fmt.Println(cl.ID)
 					if cl.ID != m.ClientID {
 						if ok := cl.Status == online; ok {
 							m.Deliver = append(m.Deliver, cl.ID)
-							h.MessageDelivery(m.ID, m.Deliver)
+							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
 							cl.Message <- m
-							fmt.Println(m.Content)
-						} else {
-							fmt.Println("iff")
-							fmt.Println(m.Content)
-							message, e := json.Marshal(m)
-							if e != nil {
-								fmt.Println(e)
-							}
-							_, err := h.MessageRepository.Redis.Redis.LPush(h.MessageRepository.Redis.ctx, m.RoomID+"."+cl.ID, string(message)).Result()
-							if err != nil {
-								fmt.Println(err)
-								return
-							}
 
 						}
-
 					}
 
 				}
