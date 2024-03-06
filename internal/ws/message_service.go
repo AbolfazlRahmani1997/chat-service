@@ -30,6 +30,7 @@ func (receiver MessageService) MessageDelivery(id string, clientIds []string) {
 
 	_, err := receiver.MessageRepository.MessageDelivery(id, clientIds)
 	if err != nil {
+
 		return
 	}
 }

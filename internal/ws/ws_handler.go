@@ -41,7 +41,7 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	room := h.hub.MessageRepository.GetRoomById(req.ID)
+	room := h.hub.MessageService.MessageRepository.GetRoomById(req.ID)
 	if room.ID != "" {
 		h.hub.Rooms[room.ID] = &Room{
 			ID:      room.ID,
@@ -58,7 +58,7 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 			Writer:  req.Writer,
 			Clients: make(map[string]*Client),
 		}
-		h.hub.MessageRepository.Mongo.InsertRoom(*h.hub.Rooms[req.ID])
+		h.hub.MessageService.MessageRepository.Mongo.InsertRoom(*h.hub.Rooms[req.ID])
 	}
 
 	c.JSON(http.StatusOK, req)
@@ -68,7 +68,7 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 func (h *Handler) JoinRoom(c *gin.Context) {
 	roomID := c.Param("roomId")
 
-	room := h.hub.MessageRepository.GetRoomById(roomID)
+	room := h.hub.MessageService.MessageRepository.GetRoomById(roomID)
 	if _, ok := h.hub.Rooms[roomID]; !ok {
 		h.hub.Room <- &room
 	}
@@ -109,10 +109,12 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	}
 
 	h.hub.Register <- cl
+
+	go cl.writeMessage()
+
 	messages := h.hub.MessageService.MessageRepository.Mongo.GetMessageNotDelivery(roomID, clientID)
 	if ok := len(messages) != 0; ok {
 		for i := len(messages) - 1; i >= 0; i-- {
-
 			h.hub.Broadcast <- &Message{
 				ID:        messages[i].ID,
 				Content:   messages[i].Content,
@@ -129,7 +131,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 			}
 		}
 	}
-	go cl.writeMessage()
 	cl.readMessage(h.hub)
 
 }
@@ -145,23 +146,24 @@ type RoomRes struct {
 func (h *Handler) GetRooms(c *gin.Context) {
 	rooms := make([]RoomRes, 0)
 	userId := c.Param("userId")
+	room := h.hub.RoomService.GetMyRoom(userId)
+	fmt.Println(room)
 	for _, r := range h.hub.Rooms {
 		WriterStatus, Role, _ := hasAccess(userId, r.Members, []string{"Owner", "Writer"})
 		fmt.Println(Role)
 		if WriterStatus {
 			fmt.Println(r.ID + "." + userId)
 			rooms = append(rooms, RoomRes{
-				ID:            r.ID,
-				Name:          r.Name,
-				NumberMessage: h.hub.MessageRepository.Redis.GetLen(r.ID + "." + userId),
-				Writer:        r.Writer,
-				Owner:         r.Owner,
+				ID:     r.ID,
+				Name:   r.Name,
+				Writer: r.Writer,
+				Owner:  r.Owner,
 			})
 		}
 
 	}
 
-	c.JSON(http.StatusOK, rooms)
+	c.JSON(http.StatusOK, room)
 }
 
 func (h *Handler) ReadMessage(c *gin.Context) {

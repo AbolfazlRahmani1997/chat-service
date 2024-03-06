@@ -153,11 +153,12 @@ func (r MessageRepository) GetRoomById(roomId string) Room {
 	return r.Mongo.getRoom(roomId)
 }
 func (r MessageRepository) MessageDelivery(id string, clientIds []string) (*mongo.UpdateResult, error) {
-
-	filter := bson.D{{"_id", id}}
+	_id, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.D{{"_id", _id}}
 	update := bson.D{{"$set", bson.D{{"Deliver", clientIds}}}}
 	result, err := r.Mongo.Collection.Collection("messages").UpdateOne(context.TODO(), filter, update)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	return result, nil
