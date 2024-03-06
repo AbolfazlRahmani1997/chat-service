@@ -78,6 +78,14 @@ func (h *Hub) Run() {
 		case room := <-h.Room:
 			{
 				h.MessageService.MessageRepository.insertRoomInDb(*room)
+				h.Rooms[room.ID] = &Room{
+					ID:      room.ID,
+					Name:    room.Name,
+					Owner:   room.Owner,
+					Writer:  room.Writer,
+					Clients: make(map[string]*Client),
+				}
+
 			}
 
 		//when user join the chat page
