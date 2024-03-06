@@ -74,7 +74,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	}
 	clientID := c.Query("userId")
 	username := c.Query("username")
-	//todo request has room
 	userOwner, _, roles := hasAccess(clientID, room.Members, []string{"Owner", "Writer"})
 	if !(userOwner) {
 		c.JSON(http.StatusForbidden, "Access Deny ")

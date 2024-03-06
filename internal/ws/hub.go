@@ -48,7 +48,7 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan)
+	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
 
 	mqBroker.Consume()
 
@@ -77,7 +77,6 @@ func (h *Hub) Run() {
 			}
 		case room := <-h.Room:
 			{
-				h.MessageService.MessageRepository.insertRoomInDb(*room)
 				h.Rooms[room.ID] = &Room{
 					ID:      room.ID,
 					Name:    room.Name,
@@ -119,7 +118,9 @@ func (h *Hub) Run() {
 			}
 		//when send message
 		case m := <-h.Broadcast:
+			fmt.Println(m.Content)
 			if _, ok := h.Rooms[m.RoomID]; ok {
+
 				if m.ID.IsZero() {
 					m.Deliver = nil
 					m.Read = nil

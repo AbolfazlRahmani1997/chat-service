@@ -8,11 +8,12 @@ import (
 )
 
 type RabbitMqBroker struct {
-	Room       chan *Room
-	connection amqp.Connection
+	Room            chan *Room
+	connection      amqp.Connection
+	MongoRepository MessageRepository
 }
 
-func NewRabbitMqBroker(Room chan *Room) RabbitMqBroker {
+func NewRabbitMqBroker(Room chan *Room, repository MessageRepository) RabbitMqBroker {
 
 	RabbitMqUrl := fmt.Sprintf("amqp://user:5KagXebV8DXNeQWa@rabbit-dev-rabbitmq.rabbit-dev:5672/")
 	fmt.Println(RabbitMqUrl)
@@ -20,7 +21,9 @@ func NewRabbitMqBroker(Room chan *Room) RabbitMqBroker {
 	if err != nil {
 		fmt.Println(err)
 	}
-	return RabbitMqBroker{connection: *conn, Room: Room}
+	return RabbitMqBroker{connection: *conn,
+		MongoRepository: repository,
+		Room:            Room}
 }
 func (receiver *RabbitMqBroker) Consume() {
 	ch, _ := receiver.connection.Channel()
@@ -42,13 +45,13 @@ func (receiver *RabbitMqBroker) Consume() {
 			if err != nil {
 				fmt.Println(err)
 			}
-			receiver.Room <- &Room{
+			receiver.MongoRepository.insertRoomInDb(Room{
 				ID:      RoomRequest.Id,
 				Name:    RoomRequest.Name,
 				Owner:   RoomRequest.Owner,
 				Writer:  RoomRequest.Writer,
 				Members: RoomRequest.Member,
-			}
+			})
 
 		}
 		wg.Wait()
