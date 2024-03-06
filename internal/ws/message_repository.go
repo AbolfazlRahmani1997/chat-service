@@ -49,17 +49,39 @@ func (r MongoDBRepository) insertMessage(message Message) *mongo.InsertOneResult
 	return one
 }
 
-func (r MongoDBRepository) GetAllMessages(roomId string) []Message {
+func (r MongoDBRepository) GetMessageNotDelivery(roomId string, userId string) []Message {
 	var data []Message
-	condition := bson.M{"roomId": roomId}
-	opts := options.Find().SetLimit(10)
-	cur, _ := r.Collection.Collection("messages").Find(context.TODO(), condition, opts)
-	err := cur.All(context.TODO(), &data)
+	condition := bson.M{"roomID": roomId, "Deliver": bson.M{"$eq": nil}, "clientID": bson.M{"$ne": userId}}
+	opts := options.Find()
+	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, opts)
 	if err != nil {
 		fmt.Println(err)
 		return nil
 	}
+	err = cur.All(context.TODO(), &data)
+	if err != nil {
+		fmt.Println(err)
+		return data
+	}
+	return data
+}
 
+func (r MongoDBRepository) GetAllMessages(roomId string, userId string) []Message {
+	var data []Message
+	condition := bson.M{"roomID": roomId, "Deliver": bson.M{"$eq": nil}, "clientID": bson.M{"$ne": userId}}
+	fmt.Println(condition)
+	opts := options.Find().SetLimit(10)
+	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, opts)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	err = cur.All(context.TODO(), &data)
+	if err != nil {
+		fmt.Println(err)
+		return data
+	}
+	fmt.Println(data)
 	return data
 }
 
@@ -131,16 +153,14 @@ func (r MessageRepository) GetRoomById(roomId string) Room {
 	return r.Mongo.getRoom(roomId)
 }
 func (r MessageRepository) MessageDelivery(id string, clientIds []string) (*mongo.UpdateResult, error) {
-	_id, _ := primitive.ObjectIDFromHex(id)
-	filter := bson.D{{"_id", _id}}
+
+	filter := bson.D{{"_id", id}}
 	update := bson.D{{"$set", bson.D{{"Deliver", clientIds}}}}
 	result, err := r.Mongo.Collection.Collection("messages").UpdateOne(context.TODO(), filter, update)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
-	fmt.Println(result)
-	return result, err
+	return result, nil
 }
 func (r MessageRepository) MessageRead(id string, clientIds []string) (*mongo.UpdateResult, error) {
 	_id, _ := primitive.ObjectIDFromHex(id)

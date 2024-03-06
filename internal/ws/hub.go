@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"encoding/json"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -46,9 +45,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan)
-
-	mqBroker.Consume()
+	//mqBroker := NewRabbitMqBroker(roomChan)
+	//
+	//mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -77,7 +76,6 @@ func (h *Hub) Run() {
 				if _, ok := h.Rooms[room.ID]; ok {
 
 				}
-
 				existRoom := h.MessageRepository.GetRoomById(room.ID)
 				if existRoom.ID != "" {
 					if len(existRoom.Owner) != len(room.Owner) || (len(existRoom.Writer) != len(room.Writer)) {
@@ -113,12 +111,15 @@ func (h *Hub) Run() {
 			}
 			//when user exit from chat page
 		case cl := <-h.Unregister:
-
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				if _, ok := h.Rooms[cl.RoomID].Clients[cl.ID]; ok {
 					fmt.Println(cl.Status)
-					cl.Status = offline
+
 					close(cl.Message)
+					delete(h.Rooms[cl.RoomID].Clients, cl.ID)
+				}
+				if ok := len(h.Rooms[cl.RoomID].Clients) == 0; ok {
+					delete(h.Rooms, cl.ID)
 				}
 			}
 		//when send message
@@ -126,35 +127,21 @@ func (h *Hub) Run() {
 			if _, ok := h.Rooms[m.RoomID]; ok {
 				m.Deliver = nil
 				m.Read = nil
-				m._Id = h.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
-				m.ID = m._Id.Hex()
+
 				for _, cl := range h.Rooms[m.RoomID].Clients {
-					fmt.Println("roomClients")
-					fmt.Println(cl.ID)
 					if cl.ID != m.ClientID {
+
 						if ok := cl.Status == online; ok {
 							m.Deliver = append(m.Deliver, cl.ID)
-							h.MessageDelivery(m.ID, m.Deliver)
+							h.MessageDelivery(m.ID.Hex(), m.Deliver)
 							cl.Message <- m
-							fmt.Println(m.Content)
-						} else {
-							fmt.Println("iff")
-							fmt.Println(m.Content)
-							message, e := json.Marshal(m)
-							if e != nil {
-								fmt.Println(e)
-							}
-							_, err := h.MessageRepository.Redis.Redis.LPush(h.MessageRepository.Redis.ctx, m.RoomID+"."+cl.ID, string(message)).Result()
-							if err != nil {
-								fmt.Println(err)
-								return
-							}
-
 						}
 
 					}
 
 				}
+			} else {
+				m.ID = h.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
 			}
 			//when join chat system for show online
 

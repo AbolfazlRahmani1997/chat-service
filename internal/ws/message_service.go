@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -31,20 +30,16 @@ func (receiver MessageService) MessageDelivery(id string, clientIds []string) {
 
 	_, err := receiver.MessageRepository.MessageDelivery(id, clientIds)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
-
 }
 
 func (receiver MessageService) MessageRead(id string, clientId string) {
-
 	messages := receiver.MessageRepository.getMessageById(id)
 	clientIds := messages.Read
 	clientIds = append(clientIds, clientId)
 	_, err := receiver.MessageRepository.MessageRead(id, clientIds)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 
@@ -61,8 +56,8 @@ func (r MessageRepository) getRoom(roomId string) Room {
 func (r MessageRepository) updateRoom(roomId string, room Room) {
 	r.UpdateRoomById(roomId, room)
 }
-func (r MessageRepository) getAllMessages(roomId string) []Message {
-	messages := r.Mongo.GetAllMessages(roomId)
+func (r MessageRepository) getAllMessages(roomId string, userId string) []Message {
+	messages := r.Mongo.GetAllMessages(roomId, userId)
 	return messages
 }
 func (receiver MessageService) getNotDeliverMessage(number int, key string) []Message {

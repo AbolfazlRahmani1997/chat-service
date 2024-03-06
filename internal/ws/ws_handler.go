@@ -67,20 +67,19 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 
 func (h *Handler) JoinRoom(c *gin.Context) {
 	roomID := c.Param("roomId")
+
 	room := h.hub.MessageRepository.GetRoomById(roomID)
 	if _, ok := h.hub.Rooms[roomID]; !ok {
 		h.hub.Room <- &room
 	}
-
 	clientID := c.Query("userId")
 	username := c.Query("username")
-
+	//todo request has room
 	userOwner, _, roles := hasAccess(clientID, room.Members, []string{"Owner", "Writer"})
 	if !(userOwner) {
 		c.JSON(http.StatusForbidden, "Access Deny ")
 		return
 	}
-
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	cl := &Client{
 		Conn:     conn,
@@ -101,7 +100,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 
 		cl.Message = make(chan *Message)
 	}
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -110,18 +108,12 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	err = conn.WriteJSON(h.hub.MessageService.MessageRepository.Mongo.GetAllMessages(roomID))
-	if err != nil {
-		fmt.Print(err)
-		return
-	}
 	h.hub.Register <- cl
-
-	messages := h.hub.MessageRepository.Redis.GetNotDeliverMessages(int(h.hub.MessageRepository.Redis.GetLen(roomID+"."+cl.ID)), roomID+"."+cl.ID)
+	messages := h.hub.MessageService.MessageRepository.Mongo.GetMessageNotDelivery(roomID, clientID)
 	if ok := len(messages) != 0; ok {
 		for i := len(messages) - 1; i >= 0; i-- {
+
 			h.hub.Broadcast <- &Message{
-				_Id:       messages[i]._Id,
 				ID:        messages[i].ID,
 				Content:   messages[i].Content,
 				RoomID:    messages[i].RoomID,
@@ -177,7 +169,6 @@ func (h *Handler) ReadMessage(c *gin.Context) {
 	roomId := c.Param("roomId")
 	clients := h.hub.Rooms[roomId].Clients
 	conn, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
-	conn.WriteJSON("test")
 	client := clients[userId]
 	client.ReadMessage = conn
 	client.seenMessage(h.hub)
@@ -195,7 +186,6 @@ func (h *Handler) GetClients(c *gin.Context) {
 		clients = make([]ClientRes, 0)
 		c.JSON(http.StatusOK, clients)
 	}
-
 	for _, c := range h.hub.Rooms[roomId].Clients {
 		clients = append(clients, ClientRes{
 			ID:       c.ID,

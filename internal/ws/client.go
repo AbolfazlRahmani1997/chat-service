@@ -27,8 +27,7 @@ type Client struct {
 }
 
 type Message struct {
-	_Id       primitive.ObjectID `bson:"_id"`
-	ID        string             `json:"ID"`
+	ID        primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	Content   string             `json:"Content,omitempty"  bson:"content"`
 	RoomID    string             `json:"RoomID,omitempty"  bson:"roomID"`
 	Username  string             `json:"Username,omitempty" bson:"username" `
