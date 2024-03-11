@@ -11,11 +11,11 @@ import (
 )
 
 func main() {
-	fmt.Println(os.Getenv("APP_NAME"))
-	mongoUrl := fmt.Sprintf("mongodb://10.0.0.15:27017/")
+
+	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
 	credential := options.Credential{
-		Username: "amir",
-		Password: "d55t1kq6tg4p1ca2",
+		Username: os.Getenv("MONGO_DB_USERNAME"),
+		Password: os.Getenv("MONGO_DB_PASSWORD"),
 	}
 
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
