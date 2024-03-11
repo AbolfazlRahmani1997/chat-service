@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"os"
 	"sync"
 )
 
@@ -15,8 +16,11 @@ type RabbitMqBroker struct {
 
 func NewRabbitMqBroker(Room chan *Room, repository MessageRepository) RabbitMqBroker {
 
-	RabbitMqUrl := fmt.Sprintf("amqp://user:5KagXebV8DXNeQWa@rabbit-dev-rabbitmq.rabbit-dev:5672/")
-	fmt.Println(RabbitMqUrl)
+	RabbitMqUrl := fmt.Sprintf("amqp://%s:%s@%s:5672/",
+		os.Getenv("RABBITMQ_USER"),
+		os.Getenv("RABBITMQ_PASSWORD"),
+		os.Getenv("RABBITMQ_HOST"))
+
 	conn, err := amqp.Dial(RabbitMqUrl)
 	if err != nil {
 		fmt.Println(err)
@@ -28,7 +32,7 @@ func NewRabbitMqBroker(Room chan *Room, repository MessageRepository) RabbitMqBr
 func (receiver *RabbitMqBroker) Consume() {
 	ch, _ := receiver.connection.Channel()
 
-	mesg, err := ch.Consume("chat-service-room", "", true, false, false, false, nil)
+	mes, err := ch.Consume("chat-service-room", "", true, false, false, false, nil)
 
 	if err != nil {
 		fmt.Println(err)
@@ -36,10 +40,9 @@ func (receiver *RabbitMqBroker) Consume() {
 
 	var wg sync.WaitGroup
 	go func() {
-
 		defer wg.Done()
 		wg.Add(1)
-		for d := range mesg {
+		for d := range mes {
 			var RoomRequest RoomBrokerDto
 			err = json.Unmarshal(d.Body, &RoomRequest)
 			if err != nil {
