@@ -37,6 +37,9 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "golang-helm.fullname" . }}-env
 #          livenessProbe:
 #            httpGet:
 #              path: /

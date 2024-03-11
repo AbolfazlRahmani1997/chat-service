@@ -5,12 +5,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
+	"os"
 	"server/internal/ws"
 	"server/router"
 )
 
 func main() {
-
+	fmt.Println(os.Getenv("APP_NAME"))
 	mongoUrl := fmt.Sprintf("mongodb://10.0.0.15:27017/")
 	credential := options.Credential{
 		Username: "amir",
