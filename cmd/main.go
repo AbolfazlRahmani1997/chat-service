@@ -30,6 +30,7 @@ func main() {
 	hub := ws.NewHub(client)
 	wsHandler := ws.NewHandler(hub)
 	go hub.Run()
+	go hub.Manager()
 	router.InitRouter(wsHandler)
 	err = router.Start("0.0.0.0:8080")
 	if err != nil {
