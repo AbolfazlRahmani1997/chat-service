@@ -207,7 +207,7 @@ func (r MessageRepository) getNumberNotDelivered(key string) int64 {
 }
 
 func (r MessageRepository) UpdateRoomById(id string, room Room) *mongo.UpdateResult {
-	update := bson.D{{"$set", bson.D{{"Writer", room.Writer}, {"Owner", room.Owner}}}}
+	update := bson.D{{}}
 	filter := bson.D{{"_id", id}}
 	byID, err := r.Mongo.Collection.Collection("rooms").UpdateByID(context.TODO(), filter, update)
 	if err != nil {

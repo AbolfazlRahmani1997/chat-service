@@ -16,21 +16,27 @@ type ReadMessage struct {
 	UserId    string `json:"UserId"`
 }
 
+type RoomStatus struct {
+	RoomId string `json:"roomId"`
+	Status status `json:"status"`
+}
 type Room struct {
 	_Id       primitive.ObjectID `bson:"_id"`
 	ID        string             `json:"id"`
 	Name      string             `json:"name"`
 	Temporary bool               `json:"type"`
 	Members   []Member           `json:"members"`
-	Owner     []string           `json:"owner,omitempty" bson:"Owner"`
-	Writer    []string           `json:"Writer,omitempty" bson:"Writer"`
+	Status    status             `json:"status"`
 	Clients   map[string]*Client `json:"clients"`
 }
 
 type Hub struct {
+	Users          map[string]*User
 	Rooms          map[string]*Room
 	Register       chan *Client
 	ReadAble       chan *ReadMessage
+	Join           chan *User
+	Left           chan *User
 	Unregister     chan *Client
 	Broadcast      chan *Message
 	Room           chan *Room
@@ -48,7 +54,7 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan)
+	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
 
 	mqBroker.Consume()
 
@@ -58,6 +64,9 @@ func NewHub(client *mongo.Client) *Hub {
 		ReadAble:       make(chan *ReadMessage),
 		Unregister:     make(chan *Client),
 		Broadcast:      make(chan *Message, 5),
+		Join:           make(chan *User),
+		Left:           make(chan *User),
+		Users:          make(map[string]*User),
 		Room:           roomChan,
 		MessageService: service,
 		RoomService:    RoomService,
@@ -77,12 +86,10 @@ func (h *Hub) Run() {
 			}
 		case room := <-h.Room:
 			{
-				h.MessageService.MessageRepository.insertRoomInDb(*room)
 				h.Rooms[room.ID] = &Room{
 					ID:      room.ID,
 					Name:    room.Name,
-					Owner:   room.Owner,
-					Writer:  room.Writer,
+					Members: room.Members,
 					Clients: make(map[string]*Client),
 				}
 
@@ -91,18 +98,29 @@ func (h *Hub) Run() {
 		//when user join the chat page
 		case cl := <-h.Register:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
-
 				r := h.Rooms[cl.RoomID]
 				if _, ok := r.Clients[cl.ID]; ok {
 					cl.Message = make(chan *Message)
 					cl.Status = online
 
 				} else {
-					fmt.Println(cl.ID)
 					r.Clients[cl.ID] = cl
 				}
 				r.Clients[cl.ID] = cl
-				fmt.Println(len(r.Clients))
+				room := h.Rooms[cl.RoomID]
+				room.Status = online
+				h.RoomService.changeRoomStatus(*room)
+				members := h.Rooms[cl.RoomID].Members
+
+				for _, member := range members {
+
+					if user, ok := h.Users[member.Id]; ok {
+						user.rooms <- &RoomStatus{
+							RoomId: h.Rooms[cl.RoomID].ID,
+							Status: online,
+						}
+					}
+				}
 			}
 			//when user exit from chat page
 		case cl := <-h.Unregister:
@@ -114,12 +132,27 @@ func (h *Hub) Run() {
 					delete(h.Rooms[cl.RoomID].Clients, cl.ID)
 				}
 				if ok := len(h.Rooms[cl.RoomID].Clients) == 0; ok {
+					room := h.Rooms[cl.RoomID]
+					room.Status = offline
+					h.RoomService.changeRoomStatus(*room)
 					delete(h.Rooms, cl.ID)
+				}
+				members := h.Rooms[cl.RoomID].Members
+
+				for _, member := range members {
+
+					if user, ok := h.Users[member.Id]; ok {
+						user.rooms <- &RoomStatus{
+							RoomId: h.Rooms[cl.RoomID].ID,
+							Status: offline,
+						}
+					}
 				}
 			}
 		//when send message
 		case m := <-h.Broadcast:
 			if _, ok := h.Rooms[m.RoomID]; ok {
+
 				if m.ID.IsZero() {
 					m.Deliver = nil
 					m.Read = nil
@@ -140,5 +173,18 @@ func (h *Hub) Run() {
 			//when join chat system for show online
 
 		}
+	}
+}
+
+func (h *Hub) Manager() {
+	for {
+		select {
+		case user, _ := <-h.Join:
+			h.Users[user.UserId] = user
+		case user, _ := <-h.Left:
+			delete(h.Users, user.UserId)
+
+		}
+
 	}
 }

@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/context"
@@ -47,6 +48,11 @@ func (r RoomMongoRepository) insert(room Room) interface{} {
 }
 
 func (r RoomMongoRepository) update(room Room) *mongo.UpdateResult {
-	result, _ := r.MongoDbRepository.Collection("rooms").UpdateByID(context.TODO(), room.ID, room)
+	fliter := bson.D{{"$set", bson.D{{"Status", room.Status}}}}
+	result, err := r.MongoDbRepository.Collection("rooms").UpdateByID(context.TODO(), room.ID, fliter)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
 	return result
 }

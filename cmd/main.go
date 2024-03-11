@@ -17,10 +17,6 @@ func main() {
 		Password: "d55t1kq6tg4p1ca2",
 	}
 
-	//credential := options.Credential{
-	//	//Username: "amir",
-	//	//Password: "d55t1kq6tg4p1ca2",
-	//}
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential).SetServerAPIOptions(serverAPI)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
@@ -30,6 +26,7 @@ func main() {
 	hub := ws.NewHub(client)
 	wsHandler := ws.NewHandler(hub)
 	go hub.Run()
+	go hub.Manager()
 	router.InitRouter(wsHandler)
 	err = router.Start("0.0.0.0:8080")
 	if err != nil {

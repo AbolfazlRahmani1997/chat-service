@@ -46,16 +46,12 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 		h.hub.Rooms[room.ID] = &Room{
 			ID:      room.ID,
 			Name:    room.Name,
-			Owner:   room.Owner,
-			Writer:  room.Writer,
 			Clients: make(map[string]*Client),
 		}
 	} else {
 		h.hub.Rooms[req.ID] = &Room{
 			ID:      req.ID,
 			Name:    req.Name,
-			Owner:   req.Owner,
-			Writer:  req.Writer,
 			Clients: make(map[string]*Client),
 		}
 		h.hub.MessageService.MessageRepository.Mongo.InsertRoom(*h.hub.Rooms[req.ID])
@@ -74,7 +70,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	}
 	clientID := c.Query("userId")
 	username := c.Query("username")
-	//todo request has room
 	userOwner, _, roles := hasAccess(clientID, room.Members, []string{"Owner", "Writer"})
 	if !(userOwner) {
 		c.JSON(http.StatusForbidden, "Access Deny ")
@@ -135,35 +130,34 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 
 }
 
-type RoomRes struct {
-	ID            string   `json:"id" `
-	Name          string   `json:"name"`
-	NumberMessage int64    `json:"NumberMessage"`
-	Writer        []string `json:"Writer"`
-	Owner         []string `json:"Owner"`
-}
-
 func (h *Handler) GetRooms(c *gin.Context) {
-	rooms := make([]RoomRes, 0)
 	userId := c.Param("userId")
 	room := h.hub.RoomService.GetMyRoom(userId)
-	fmt.Println(room)
-	for _, r := range h.hub.Rooms {
-		WriterStatus, Role, _ := hasAccess(userId, r.Members, []string{"Owner", "Writer"})
-		fmt.Println(Role)
-		if WriterStatus {
-			fmt.Println(r.ID + "." + userId)
-			rooms = append(rooms, RoomRes{
-				ID:     r.ID,
-				Name:   r.Name,
-				Writer: r.Writer,
-				Owner:  r.Owner,
-			})
-		}
-
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = conn.WriteJSON(room)
+	if err != nil {
+		return
+	}
+	user := &User{
+		Conn:   conn,
+		UserId: userId,
+		rooms:  make(chan *RoomStatus),
 	}
 
-	c.JSON(http.StatusOK, room)
+	h.hub.Join <- user
+
+	err = conn.WriteJSON("test")
+
+	if err != nil {
+
+		return
+	}
+
+	go user.WireRooms(h.hub)
+
 }
 
 func (h *Handler) ReadMessage(c *gin.Context) {
