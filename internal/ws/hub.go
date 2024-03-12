@@ -7,8 +7,10 @@ import (
 )
 
 type Member struct {
-	Id    string   `json:"Id"`
-	Roles []string `json:"roles"`
+	Id        string   `json:"Id"`
+	Roles     []string `json:"roles"`
+	FirstName string   `json:"firstName"`
+	LastName  string   `json:"LastName"`
 }
 
 type ReadMessage struct {
@@ -66,9 +68,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-
-	mqBroker.Consume()
+	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+	//
+	//mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -126,11 +128,12 @@ func (h *Hub) Run() {
 				members := h.Rooms[cl.RoomID].Members
 
 				for _, member := range members {
-
 					if user, ok := h.Users[member.Id]; ok {
-						user.rooms <- &RoomStatus{
-							RoomId: h.Rooms[cl.RoomID].ID,
-							Status: online,
+						if user.online {
+							user.rooms <- &RoomStatus{
+								RoomId: h.Rooms[cl.RoomID].ID,
+								Status: online,
+							}
 						}
 					}
 				}

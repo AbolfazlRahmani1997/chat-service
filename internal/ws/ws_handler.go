@@ -138,6 +138,7 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	}
 	err = conn.WriteJSON(room)
 	if err != nil {
+		fmt.Println(err)
 		return
 	}
 	user := &User{
@@ -145,8 +146,8 @@ func (h *Handler) GetRooms(c *gin.Context) {
 		UserId: userId,
 		rooms:  make(chan *RoomStatus),
 	}
+
 	h.hub.Join <- user
-	conn.Close()
 
 }
 func (h *Handler) SyncRoom(c *gin.Context) {

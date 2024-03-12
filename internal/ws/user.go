@@ -23,8 +23,6 @@ func (User *User) WireRooms(h *Hub) {
 			if User.online == true {
 				err := User.StatusConnection.WriteJSON(room)
 				if err != nil {
-
-					return
 				}
 			}
 
