@@ -148,14 +148,6 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	}
 
 	h.hub.Join <- user
-
-	err = conn.WriteJSON("test")
-
-	if err != nil {
-
-		return
-	}
-
 	go user.WireRooms(h.hub)
 
 }
