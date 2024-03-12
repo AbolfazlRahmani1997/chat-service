@@ -129,7 +129,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	cl.readMessage(h.hub)
 
 }
-
 func (h *Handler) GetRooms(c *gin.Context) {
 	userId := c.Param("userId")
 	room := h.hub.RoomService.GetMyRoom(userId)
@@ -148,10 +147,22 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	}
 
 	h.hub.Join <- user
-	go user.WireRooms(h.hub)
 
 }
+func (h *Handler) SyncRoom(c *gin.Context) {
+	userId := c.Param("userId")
+	if _, ok := h.hub.Users[userId]; ok {
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+		h.hub.Users[userId].StatusConnection = conn
+		go h.hub.Users[userId].WireRooms(h.hub)
+	} else {
+		c.JSON(404, "not found")
+	}
 
+}
 func (h *Handler) ReadMessage(c *gin.Context) {
 	userId := c.Query("userId")
 	roomId := c.Param("roomId")

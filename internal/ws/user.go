@@ -5,9 +5,10 @@ import (
 )
 
 type User struct {
-	Conn   *websocket.Conn
-	UserId string `json:"UserId"`
-	rooms  chan *RoomStatus
+	Conn             *websocket.Conn
+	StatusConnection *websocket.Conn
+	UserId           string `json:"UserId"`
+	rooms            chan *RoomStatus
 }
 
 func (User *User) WireRooms(h *Hub) {
@@ -18,7 +19,7 @@ func (User *User) WireRooms(h *Hub) {
 	for {
 		select {
 		case room, _ := <-User.rooms:
-			err := User.Conn.WriteJSON(room)
+			err := User.StatusConnection.WriteJSON(room)
 			if err != nil {
 				return
 			}
