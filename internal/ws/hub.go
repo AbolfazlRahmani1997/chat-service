@@ -20,13 +20,25 @@ type RoomStatus struct {
 	RoomId string `json:"roomId"`
 	Status status `json:"status"`
 }
-type Room struct {
-	_Id       primitive.ObjectID `bson:"_id"`
-	ID        string             `json:"id"`
-	Name      string             `json:"name"`
-	Temporary bool               `json:"type"`
+
+type RoomModel struct {
+	ID        primitive.ObjectID `json:"_id"`
+	RoomId    string             `json:"id"`
+	Name      string             `json:"name" `
+	Temporary bool               `json:"type" `
 	Members   []Member           `json:"members"`
-	Status    status             `json:"status"`
+	Message   Message            `json:"message" bson:"last_message"`
+	Status    status             `json:"status" `
+	Clients   map[string]*Client `json:"clients"`
+}
+type Room struct {
+	_Id       primitive.ObjectID `json:"_id"`
+	ID        string             `json:"Id" `
+	Name      string             `json:"name" `
+	Temporary bool               `json:"type" `
+	Members   []Member           `json:"members"`
+	Message   Message            `json:"message" bson:"last_message"`
+	Status    status             `json:"status" `
 	Clients   map[string]*Client `json:"clients"`
 }
 
@@ -87,6 +99,7 @@ func (h *Hub) Run() {
 		case room := <-h.Room:
 			{
 				h.Rooms[room.ID] = &Room{
+					_Id:     room._Id,
 					ID:      room.ID,
 					Name:    room.Name,
 					Members: room.Members,
@@ -140,7 +153,6 @@ func (h *Hub) Run() {
 				members := h.Rooms[cl.RoomID].Members
 
 				for _, member := range members {
-
 					if user, ok := h.Users[member.Id]; ok {
 						user.rooms <- &RoomStatus{
 							RoomId: h.Rooms[cl.RoomID].ID,
@@ -152,13 +164,15 @@ func (h *Hub) Run() {
 		//when send message
 		case m := <-h.Broadcast:
 			if _, ok := h.Rooms[m.RoomID]; ok {
-
 				if m.ID.IsZero() {
 					m.Deliver = nil
 					m.Read = nil
 					m.ID = h.MessageService.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
+
 				}
+				h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
 				for _, cl := range h.Rooms[m.RoomID].Clients {
+
 					if cl.ID != m.ClientID {
 						if ok := cl.Status == online; ok {
 							m.Deliver = append(m.Deliver, cl.ID)
@@ -183,8 +197,6 @@ func (h *Hub) Manager() {
 			h.Users[user.UserId] = user
 		case user, _ := <-h.Left:
 			delete(h.Users, user.UserId)
-
 		}
-
 	}
 }

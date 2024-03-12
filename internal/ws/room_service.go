@@ -9,6 +9,10 @@ func (r RoomService) GetMyRoom(userId string) []Room {
 
 }
 
+func (r RoomService) UpdateLastMessage(room Room, message Message) {
+	r.RoomRepository.lastMessage(room._Id.Hex(), message)
+}
+
 func NewRoomService(RoomRepository RoomMongoRepository) RoomService {
 	return RoomService{
 		RoomRepository: RoomRepository,

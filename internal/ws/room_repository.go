@@ -3,6 +3,7 @@ package ws
 import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/context"
 )
@@ -16,6 +17,7 @@ func NewRoomRepository(client *mongo.Database) RoomMongoRepository {
 }
 
 func (r RoomMongoRepository) getById(roomId string) Room {
+	fmt.Println("test")
 	var room Room
 	filter := bson.M{
 		"id": roomId,
@@ -25,6 +27,7 @@ func (r RoomMongoRepository) getById(roomId string) Room {
 	if err != nil {
 		return Room{}
 	}
+
 	return room
 }
 
@@ -45,6 +48,19 @@ func (receiver RoomMongoRepository) GetMyRooms(userId string) []Room {
 func (r RoomMongoRepository) insert(room Room) interface{} {
 	result, _ := r.MongoDbRepository.Collection("rooms").InsertOne(context.TODO(), room)
 	return result
+}
+
+func (r RoomMongoRepository) lastMessage(id string, message Message) bool {
+
+	_id, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.D{{"_id", _id}}
+	update := bson.D{{"$set", bson.D{{"last_message", message}}}}
+	result, err := r.MongoDbRepository.Collection("rooms").UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(result.ModifiedCount)
+	return true
 }
 
 func (r RoomMongoRepository) update(room Room) *mongo.UpdateResult {

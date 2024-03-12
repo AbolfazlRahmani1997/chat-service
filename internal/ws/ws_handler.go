@@ -145,8 +145,8 @@ func (h *Handler) GetRooms(c *gin.Context) {
 		UserId: userId,
 		rooms:  make(chan *RoomStatus),
 	}
-
 	h.hub.Join <- user
+	conn.Close()
 
 }
 func (h *Handler) SyncRoom(c *gin.Context) {
@@ -156,6 +156,7 @@ func (h *Handler) SyncRoom(c *gin.Context) {
 		if err != nil {
 			fmt.Println(err)
 		}
+		h.hub.Users[userId].online = true
 		h.hub.Users[userId].StatusConnection = conn
 		go h.hub.Users[userId].WireRooms(h.hub)
 	} else {

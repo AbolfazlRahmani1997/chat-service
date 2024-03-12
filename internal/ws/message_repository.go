@@ -95,16 +95,23 @@ func (r MongoDBRepository) InsertRoom(room Room) *mongo.InsertOneResult {
 
 func (r MongoDBRepository) getRoom(roomId string) Room {
 
-	var roomResult Room
+	var roomResult RoomModel
 	filter := bson.M{"id": roomId}
 
 	one := r.Collection.Collection("rooms").FindOne(context.Background(), filter)
-	err := one.Decode(&roomResult)
+	data, _ := one.Raw()
+	err := json.Unmarshal([]byte(data.String()), &roomResult)
 	if err != nil {
 		fmt.Println(err)
 		return Room{}
 	}
-	return roomResult
+	return Room{
+		_Id:       roomResult.ID,
+		ID:        roomId,
+		Name:      roomResult.Name,
+		Temporary: roomResult.Temporary,
+		Status:    roomResult.Status,
+		Members:   roomResult.Members}
 }
 func (r MongoDBRepository) getMessage(messageId string) Message {
 	var message Message
