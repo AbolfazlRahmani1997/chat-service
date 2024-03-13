@@ -17,7 +17,6 @@ func NewRoomRepository(client *mongo.Database) RoomMongoRepository {
 }
 
 func (r RoomMongoRepository) getById(roomId string) Room {
-	fmt.Println("test")
 	var room Room
 	filter := bson.M{
 		"id": roomId,
@@ -72,5 +71,13 @@ func (r RoomMongoRepository) update(room Room) *mongo.UpdateResult {
 		fmt.Println(err)
 		return nil
 	}
+	return result
+}
+func (r RoomMongoRepository) updateMember(room Room) *mongo.SingleResult {
+
+	fliter := bson.D{{"members.id", bson.D{{"$eq", "120"}}}}
+	update := bson.D{{"$set", bson.D{{"members", room.Members}}}}
+	result := r.MongoDbRepository.Collection("rooms").FindOneAndUpdate(context.TODO(), fliter, update)
+	fmt.Println(result.Raw())
 	return result
 }

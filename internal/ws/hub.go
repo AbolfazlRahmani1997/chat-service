@@ -9,8 +9,9 @@ import (
 type Member struct {
 	Id        string   `json:"Id"`
 	Roles     []string `json:"roles"`
-	FirstName string   `json:"firstName"`
-	LastName  string   `json:"lastName"`
+	FirstName string   `json:"firstname"`
+	LastName  string   `json:"lastname"`
+	AvatarUrl string   `json:"avatarUrl"`
 }
 
 type ReadMessage struct {
@@ -62,8 +63,9 @@ type Hub struct {
 func NewHub(client *mongo.Client) *Hub {
 	clientDatabase := client.Database("MessageDB")
 	messageRepository := NewMessageRepository(clientDatabase)
+	userRepository := NewUserRepository(client.Database("main"))
 	RoomRepository := NewRoomRepository(clientDatabase)
-	RoomService := NewRoomService(RoomRepository)
+	RoomService := NewRoomService(RoomRepository, userRepository)
 	service := MessageService{
 		messageRepository,
 	}

@@ -65,6 +65,8 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	roomID := c.Param("roomId")
 
 	room := h.hub.MessageService.MessageRepository.GetRoomById(roomID)
+
+	h.hub.RoomService.SyncUser(room)
 	if _, ok := h.hub.Rooms[roomID]; !ok {
 		h.hub.Room <- &room
 	}
