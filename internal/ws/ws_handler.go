@@ -144,9 +144,9 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	user := &User{
 		Conn:   conn,
 		UserId: userId,
+		online: false,
 		rooms:  make(chan *RoomStatus),
 	}
-
 	h.hub.Join <- user
 
 }

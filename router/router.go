@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"os"
 
 	"io/ioutil"
 	"net/http"
@@ -52,7 +53,8 @@ func Auth() gin.HandlerFunc {
 		var user User
 		// Set example variable
 		client := &http.Client{}
-		request, err := http.NewRequest("GET", "http://gateway-backend/api/user", nil)
+		getwayUrl := fmt.Sprintf("%s/api/user", os.Getenv("GATEWAY_URL"))
+		request, err := http.NewRequest("GET", getwayUrl, nil)
 		request.Header.Set("Authorization", c.GetHeader("Authorization"))
 		if err != nil {
 			fmt.Println(err)

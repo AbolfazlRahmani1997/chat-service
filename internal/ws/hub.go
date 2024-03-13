@@ -10,7 +10,7 @@ type Member struct {
 	Id        string   `json:"Id"`
 	Roles     []string `json:"roles"`
 	FirstName string   `json:"firstName"`
-	LastName  string   `json:"LastName"`
+	LastName  string   `json:"lastName"`
 }
 
 type ReadMessage struct {
@@ -199,6 +199,7 @@ func (h *Hub) Manager() {
 	for {
 		select {
 		case user, _ := <-h.Join:
+			fmt.Println(user)
 			h.Users[user.UserId] = user
 		case user, _ := <-h.Left:
 			delete(h.Users, user.UserId)
