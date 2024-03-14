@@ -77,6 +77,6 @@ func (r RoomMongoRepository) updateMember(room Room) *mongo.SingleResult {
 
 	fliter := bson.M{"id": room.ID}
 	update := bson.D{{"$set", bson.D{{"members", room.Members}}}}
-	result := r.MongoDbRepository.Collection("rooms").FindOneAndUpdate(context.TODO(), fliter, update)
+	result := r.MongoDbRepository.Collection("rooms").FindOneAndUpdate(context.Background(), fliter, update)
 	return result
 }

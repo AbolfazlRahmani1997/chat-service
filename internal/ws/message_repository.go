@@ -65,6 +65,16 @@ func (r MongoDBRepository) GetMessageNotDelivery(roomId string, userId string) [
 	}
 	return data
 }
+func (r MongoDBRepository) GetMessageNotCountDelivery(roomId string, userId string) int64 {
+	condition := bson.M{"roomID": roomId, "Deliver": bson.M{"$eq": nil}, "clientID": bson.M{"$ne": userId}}
+	opts := options.Count().SetHint("_id_")
+	cur, err := r.Collection.Collection("messages").CountDocuments(context.TODO(), condition, opts)
+	if err != nil {
+		fmt.Println(err)
+		return 0
+	}
+	return cur
+}
 
 func (r MongoDBRepository) GetAllMessages(roomId string, userId string) []Message {
 	var data []Message

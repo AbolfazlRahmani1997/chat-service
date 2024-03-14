@@ -65,7 +65,7 @@ func NewHub(client *mongo.Client) *Hub {
 	messageRepository := NewMessageRepository(clientDatabase)
 	userRepository := NewUserRepository(client.Database("main"))
 	RoomRepository := NewRoomRepository(clientDatabase)
-	RoomService := NewRoomService(RoomRepository, userRepository)
+	RoomService := NewRoomService(RoomRepository, messageRepository, userRepository)
 	service := MessageService{
 		messageRepository,
 	}
@@ -132,7 +132,7 @@ func (h *Hub) Run() {
 				for _, member := range members {
 					if user, ok := h.Users[member.Id]; ok {
 						if user.online {
-							user.rooms <- &RoomStatus{
+							user.roomStatuses <- &RoomStatus{
 								RoomId: h.Rooms[cl.RoomID].ID,
 								Status: online,
 							}
@@ -160,10 +160,12 @@ func (h *Hub) Run() {
 				for _, member := range members {
 					if user, ok := h.Users[member.Id]; ok {
 						if user.online == true {
-							user.rooms <- &RoomStatus{
-								RoomId: h.Rooms[cl.RoomID].ID,
-								Status: offline,
-							}
+							go func() {
+								user.roomStatuses <- &RoomStatus{
+									RoomId: h.Rooms[cl.RoomID].ID,
+									Status: offline,
+								}
+							}()
 						}
 					}
 				}
@@ -201,7 +203,6 @@ func (h *Hub) Manager() {
 	for {
 		select {
 		case user, _ := <-h.Join:
-			fmt.Println(user)
 			h.Users[user.UserId] = user
 		case user, _ := <-h.Left:
 			delete(h.Users, user.UserId)

@@ -144,12 +144,13 @@ func (h *Handler) GetRooms(c *gin.Context) {
 		return
 	}
 	user := &User{
-		Conn:   conn,
-		UserId: userId,
-		online: false,
-		rooms:  make(chan *RoomStatus),
+		Conn:         conn,
+		UserId:       userId,
+		online:       false,
+		roomStatuses: make(chan *RoomStatus),
 	}
 	h.hub.Join <- user
+	user.userConnection(h.hub)
 
 }
 func (h *Handler) SyncRoom(c *gin.Context) {
@@ -161,7 +162,7 @@ func (h *Handler) SyncRoom(c *gin.Context) {
 		}
 		h.hub.Users[userId].online = true
 		h.hub.Users[userId].StatusConnection = conn
-		go h.hub.Users[userId].WireRooms(h.hub)
+		h.hub.Users[userId].WireRooms(h.hub)
 	} else {
 		c.JSON(404, "not found")
 	}

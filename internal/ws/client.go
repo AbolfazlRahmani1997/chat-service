@@ -45,7 +45,6 @@ func (c *Client) writeMessage() {
 
 	for {
 		message, ok := <-c.Message
-		fmt.Println(message)
 		if !ok {
 			return
 		}
