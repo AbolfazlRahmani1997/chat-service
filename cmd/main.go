@@ -12,7 +12,7 @@ import (
 
 func main() {
 
-	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_USERNAME"), os.Getenv("MONGO_DB_PASSWORD"))
+	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
 	credential := options.Credential{
 		Username: os.Getenv("MONGO_DB_USERNAME"),
 		Password: os.Getenv("MONGO_DB_PASSWORD"),
