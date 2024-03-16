@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"strconv"
 	"time"
 )
 
@@ -65,6 +66,22 @@ func (r MongoDBRepository) GetMessageNotDelivery(roomId string, userId string) [
 	}
 	return data
 }
+func (r MongoDBRepository) GetRoomMessages(roomId string, userId string) []Message {
+	var data []Message
+	condition := bson.M{"roomID": roomId}
+	opts := options.Find().SetLimit(1)
+	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, opts)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	err = cur.All(context.TODO(), &data)
+	if err != nil {
+		fmt.Println(err)
+		return data
+	}
+	return data
+}
 func (r MongoDBRepository) GetMessageNotCountDelivery(roomId string, userId string) int64 {
 	condition := bson.M{"roomID": roomId, "Deliver": bson.M{"$eq": nil}, "clientID": bson.M{"$ne": userId}}
 	opts := options.Count().SetHint("_id_")
@@ -75,11 +92,31 @@ func (r MongoDBRepository) GetMessageNotCountDelivery(roomId string, userId stri
 	}
 	return cur
 }
+func (r MongoDBRepository) GetRoomMessage(roomId string, page string) []Message {
+	var data []Message
+	limit, _ := strconv.Atoi(page)
+	condition := bson.M{"roomID": roomId}
+	l := int64(10)
+	skip := int64(limit*10 - 10)
+	opts := options.FindOptions{Skip: &skip, Limit: &l}
+
+	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, &opts)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	err = cur.All(context.TODO(), &data)
+	if err != nil {
+		fmt.Println(err)
+		return data
+	}
+	return data
+}
 
 func (r MongoDBRepository) GetAllMessages(roomId string, userId string) []Message {
 	var data []Message
-	condition := bson.M{"roomID": roomId, "Deliver": bson.M{"$eq": nil}, "clientID": bson.M{"$ne": userId}}
-	fmt.Println(condition)
+	condition := bson.M{"roomID": roomId}
+
 	opts := options.Find().SetLimit(10)
 	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, opts)
 	if err != nil {

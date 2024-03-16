@@ -37,10 +37,8 @@ func (receiver RoomMongoRepository) GetMyRooms(userId string) []Room {
 	}
 
 	cur, err := receiver.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter)
-	fmt.Println(err)
 	err = cur.All(context.TODO(), &rooms)
 	if err != nil {
-
 		return rooms
 	}
 	return rooms

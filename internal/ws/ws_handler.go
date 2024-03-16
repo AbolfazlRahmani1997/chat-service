@@ -63,7 +63,6 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 
 func (h *Handler) JoinRoom(c *gin.Context) {
 	roomID := c.Param("roomId")
-
 	room := h.hub.MessageService.MessageRepository.GetRoomById(roomID)
 
 	h.hub.RoomService.SyncUser(room)
@@ -71,7 +70,8 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		h.hub.Room <- &room
 	}
 	clientID := c.Query("userId")
-	username := c.Query("username")
+	page := c.Query("page")
+
 	userOwner, _, roles := hasAccess(clientID, room.Members, []string{"Owner", "Writer"})
 	if !(userOwner) {
 		c.JSON(http.StatusForbidden, "Access Deny ")
@@ -79,11 +79,10 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	}
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	cl := &Client{
-		Conn:     conn,
-		ID:       clientID,
-		RoomID:   roomID,
-		Username: username,
-		Status:   online,
+		Conn:   conn,
+		ID:     clientID,
+		RoomID: roomID,
+		Status: online,
 	}
 	if roles == nil {
 		cl.Message = make(chan *Message, 3)
@@ -97,6 +96,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 
 		cl.Message = make(chan *Message)
 	}
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -108,7 +108,11 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	h.hub.Register <- cl
 
 	go cl.writeMessage()
-
+	messagesRoom := h.hub.MessageService.MessageRepository.Mongo.GetRoomMessage(roomID, page)
+	err = conn.WriteJSON(messagesRoom)
+	if err != nil {
+		return
+	}
 	messages := h.hub.MessageService.MessageRepository.Mongo.GetMessageNotDelivery(roomID, clientID)
 	if ok := len(messages) != 0; ok {
 		for i := len(messages) - 1; i >= 0; i-- {
