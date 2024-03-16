@@ -2,6 +2,7 @@ package ws
 
 import (
 	"go.mongodb.org/mongo-driver/mongo"
+	"strconv"
 )
 
 type MessageService struct {
@@ -59,6 +60,15 @@ func (r MessageRepository) updateRoom(roomId string, room Room) {
 }
 func (r MessageRepository) getAllMessages(roomId string, userId string) []Message {
 	messages := r.Mongo.GetAllMessages(roomId, userId)
+	return messages
+}
+func (r MessageService) getRoomMessages(roomId string, limit string) []Message {
+	_, err := strconv.Atoi(limit)
+	if err != nil {
+		return nil
+	}
+
+	messages := r.MessageRepository.Mongo.GetRoomMessage(roomId, limit)
 	return messages
 }
 func (receiver MessageService) getNotDeliverMessage(number int, key string) []Message {
