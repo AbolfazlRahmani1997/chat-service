@@ -98,9 +98,10 @@ func (r MongoDBRepository) GetRoomMessage(roomId string, page string) []Message 
 	condition := bson.M{"roomID": roomId}
 	l := int64(10)
 	skip := int64(limit*10 - 10)
-	opts := options.FindOptions{Skip: &skip, Limit: &l}
+	findOptions := options.FindOptions{Skip: &skip, Limit: &l}
+	opts := findOptions.SetSort(bson.D{{"created_at", -1}})
 
-	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, &opts)
+	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, opts)
 	if err != nil {
 		fmt.Println(err)
 		return nil
