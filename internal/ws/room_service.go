@@ -45,6 +45,7 @@ func (receiver RoomService) SyncUser(room Room) Room {
 		member := receiver.MemberRepository.getUser(m.Id)
 		m.FirstName = member.FirstName
 		m.LastName = member.LastName
+		m.AvatarUrl = member.AvatarUrl
 		newMember = append(newMember, m)
 
 	}

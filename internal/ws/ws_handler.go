@@ -35,6 +35,10 @@ type CreateRoomReq struct {
 	Writer []string `json:"Writer"`
 }
 
+func (h *Handler) UpdateUser(dto UserDto) {
+	h.hub.RoomService.MemberRepository.UpdateUser(dto.UserId, dto)
+}
+
 func (h *Handler) CreateRoom(c *gin.Context) {
 	var req CreateRoomReq
 	if err := c.ShouldBindJSON(&req); err != nil {

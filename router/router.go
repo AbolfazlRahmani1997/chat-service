@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"server/internal/ws"
 	"strconv"
 	"time"
@@ -28,7 +29,7 @@ func InitRouter(wsHandler *ws.Handler) {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
-	r.Use(Auth())
+	r.Use(Auth(*wsHandler))
 	//todo:create from rabbitmq
 	r.POST("/chat/ws/createRoom", wsHandler.CreateRoom)
 	r.GET("/chat/ws/joinRoom/:roomId", wsHandler.JoinRoom)
@@ -42,16 +43,20 @@ func Start(addr string) error {
 	return r.Run(addr)
 }
 
-func Auth() gin.HandlerFunc {
+func Auth(handler ws.Handler) gin.HandlerFunc {
 	type User struct {
-		Id int `json:"id"`
+		Id        int    `json:"id"`
+		Avatar    string `json:"avatar"`
+		FirstName string `json:"firstname"`
+		LastName  string `json:"lastname"`
+		UserName  string `json:"username"`
 	}
 
 	return func(c *gin.Context) {
 		var user User
 		// Set example variable
 		client := &http.Client{}
-		getwayUrl := fmt.Sprintf("%s/api/user", "https://dev.oteacher.org")
+		getwayUrl := fmt.Sprintf("%s/api/user", os.Getenv("GATEWAY_URL"))
 		request, err := http.NewRequest("GET", getwayUrl, nil)
 		request.Header.Set("Authorization", c.GetHeader("Authorization"))
 		if err != nil {
@@ -63,14 +68,20 @@ func Auth() gin.HandlerFunc {
 			fmt.Println(err)
 		}
 		fmt.Println("sendRequest")
-		fmt.Println(res)
+		fmt.Println(res.Body)
 		body, _ := ioutil.ReadAll(res.Body)
 		derr := json.Unmarshal(body, &user)
 
 		if derr != nil {
 			fmt.Println(derr)
 		}
+
 		c.Set("userId", strconv.Itoa(user.Id))
+		c.Set("Avatar", user.Avatar)
+		c.Set("FirstName", user.FirstName)
+		c.Set("LastName", user.LastName)
+		c.Set("username", user.UserName)
+		handler.UpdateUser(ws.UserDto{UserId: strconv.Itoa(user.Id), UserName: user.UserName, FirstName: user.FirstName, LastName: user.LastName, AvatarUrl: user.Avatar})
 		c.Next()
 
 	}

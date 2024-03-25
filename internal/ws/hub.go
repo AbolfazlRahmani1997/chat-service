@@ -11,7 +11,7 @@ type Member struct {
 	Roles     []string `json:"roles"`
 	FirstName string   `json:"firstname"`
 	LastName  string   `json:"lastname"`
-	AvatarUrl string   `json:"avatarUrl"`
+	AvatarUrl string   `json:"AvatarUrl"bson:"avatar_url"`
 }
 
 type ReadMessage struct {
