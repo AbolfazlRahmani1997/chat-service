@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"os"
-
 	"io/ioutil"
 	"net/http"
 	"server/internal/ws"
@@ -30,13 +28,13 @@ func InitRouter(wsHandler *ws.Handler) {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
-	//r.Use(Auth())
+	r.Use(Auth())
 	//todo:create from rabbitmq
 	r.POST("/chat/ws/createRoom", wsHandler.CreateRoom)
 	r.GET("/chat/ws/joinRoom/:roomId", wsHandler.JoinRoom)
 	r.GET("/chat/ws/seenMessage/:roomId", wsHandler.ReadMessage)
-	r.GET("/chat/ws/getRooms/:userId", wsHandler.GetRooms)
-	r.GET("/chat/ws/syncRooms/:userId", wsHandler.SyncRoom)
+	r.GET("/chat/ws/getRooms/", wsHandler.GetRooms)
+	r.GET("/chat/ws/syncRooms/", wsHandler.SyncRoom)
 	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
 }
 
@@ -53,7 +51,7 @@ func Auth() gin.HandlerFunc {
 		var user User
 		// Set example variable
 		client := &http.Client{}
-		getwayUrl := fmt.Sprintf("%s/api/user", os.Getenv("GATEWAY_URL"))
+		getwayUrl := fmt.Sprintf("%s/api/user", "https://dev.oteacher.org")
 		request, err := http.NewRequest("GET", getwayUrl, nil)
 		request.Header.Set("Authorization", c.GetHeader("Authorization"))
 		if err != nil {
@@ -65,8 +63,8 @@ func Auth() gin.HandlerFunc {
 			fmt.Println(err)
 		}
 		fmt.Println("sendRequest")
+		fmt.Println(res)
 		body, _ := ioutil.ReadAll(res.Body)
-
 		derr := json.Unmarshal(body, &user)
 
 		if derr != nil {
