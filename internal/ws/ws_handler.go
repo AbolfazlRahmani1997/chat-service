@@ -69,6 +69,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	if _, ok := h.hub.Rooms[roomID]; !ok {
 		h.hub.Room <- &room
 	}
+
 	clientID := c.Query("userId")
 	page := c.Query("page")
 
@@ -136,7 +137,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 
 }
 func (h *Handler) GetRooms(c *gin.Context) {
-	userId := c.Param("userId")
+	userId := c.GetString("userId")
 	room := h.hub.RoomService.GetMyRoom(userId)
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -158,7 +159,7 @@ func (h *Handler) GetRooms(c *gin.Context) {
 
 }
 func (h *Handler) SyncRoom(c *gin.Context) {
-	userId := c.Param("userId")
+	userId := c.GetString("userId")
 	if _, ok := h.hub.Users[userId]; ok {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -173,7 +174,7 @@ func (h *Handler) SyncRoom(c *gin.Context) {
 
 }
 func (h *Handler) ReadMessage(c *gin.Context) {
-	userId := c.Query("userId")
+	userId := c.GetString("userId")
 	roomId := c.Param("roomId")
 	clients := h.hub.Rooms[roomId].Clients
 	conn, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
