@@ -20,8 +20,9 @@ type ReadMessage struct {
 }
 
 type RoomStatus struct {
-	RoomId string `json:"roomId"`
-	Status status `json:"status"`
+	RoomId  string `json:"roomId"`
+	Status  status `json:"status"`
+	Message string `json:"Message"`
 }
 
 type RoomModel struct {
@@ -133,8 +134,9 @@ func (h *Hub) Run() {
 					if user, ok := h.Users[member.Id]; ok {
 						if user.online {
 							user.roomStatuses <- &RoomStatus{
-								RoomId: h.Rooms[cl.RoomID].ID,
-								Status: online,
+								RoomId:  h.Rooms[cl.RoomID].ID,
+								Status:  online,
+								Message: "",
 							}
 						}
 					}
@@ -180,22 +182,40 @@ func (h *Hub) Run() {
 
 				}
 				h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
-				for _, cl := range h.Rooms[m.RoomID].Clients {
 
+				members := h.Rooms[m.RoomID].Members
+				for _, userID := range members {
+					if user, ok := h.Users[userID.Id]; ok {
+
+						if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
+							if user.UserId != m.ClientID {
+								user.roomStatuses <- &RoomStatus{
+									RoomId:  m.RoomID,
+									Message: m.Content,
+								}
+							}
+						}
+
+					}
+				}
+				for _, cl := range h.Rooms[m.RoomID].Clients {
 					if cl.ID != m.ClientID {
 						if ok := cl.Status == online; ok {
 							m.Deliver = append(m.Deliver, cl.ID)
+
 							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
 							cl.Message <- m
 
 						}
+
 					}
 
 				}
-			}
-			//when join chat system for show online
 
+			}
 		}
+		//when join chat system for show online
+
 	}
 }
 
