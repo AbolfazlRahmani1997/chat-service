@@ -70,7 +70,8 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		h.hub.Room <- &room
 	}
 
-	clientID := c.Query("userId")
+	clientID := c.GetString("userId")
+
 	page := c.Query("page")
 
 	userOwner, _, roles := hasAccess(clientID, room.Members, []string{"Owner", "Writer"})
