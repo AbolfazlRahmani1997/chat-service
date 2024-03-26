@@ -147,10 +147,11 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 func (h *Handler) GetRooms(c *gin.Context) {
 	token := c.Query("token")
 	token = fmt.Sprintf("%s", token)
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	userAuthed := h.getUser(token)
 	userId := strconv.Itoa(userAuthed.Id)
 	room := h.hub.RoomService.GetMyRoom(userId)
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+
 	if err != nil {
 		fmt.Println(err)
 	}
