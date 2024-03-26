@@ -171,17 +171,17 @@ func (h *Handler) GetRooms(c *gin.Context) {
 
 }
 func (h *Handler) SyncRoom(c *gin.Context) {
-	userId := c.GetString("userId")
-	if _, ok := h.hub.Users[userId]; ok {
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			fmt.Println(err)
-		}
+	token := c.Query("token")
+	token = fmt.Sprintf("%s", token)
+	conn, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
+	userAuthed := h.getUser(token)
+	userId := strconv.Itoa(userAuthed.Id)
+	if _, ok := h.hub.Users[userId]; !ok {
+		c.JSON(404, "not found")
+	} else {
 		h.hub.Users[userId].online = true
 		h.hub.Users[userId].StatusConnection = conn
 		h.hub.Users[userId].WireRooms(h.hub)
-	} else {
-		c.JSON(404, "not found")
 	}
 
 }
