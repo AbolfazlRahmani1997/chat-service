@@ -145,8 +145,10 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 
 }
 func (h *Handler) GetRooms(c *gin.Context) {
-	//h.getUser(c)
-	userId := c.Param("userId")
+	token := c.Query("token")
+	token = fmt.Sprintf("%s", token)
+	userAuthed := h.getUser(token)
+	userId := strconv.Itoa(userAuthed.Id)
 	room := h.hub.RoomService.GetMyRoom(userId)
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -264,23 +266,24 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 	return
 }
 
-func (Handler *Handler) getUser(c *gin.Context) {
-	type User struct {
-		Id        int    `json:"id"`
-		Avatar    string `json:"avatar"`
-		FirstName string `json:"firstname"`
-		LastName  string `json:"lastname"`
-		UserName  string `json:"username"`
-	}
+type UserRequest struct {
+	Id        int    `json:"id"`
+	Avatar    string `json:"avatar"`
+	FirstName string `json:"firstname"`
+	LastName  string `json:"lastname"`
+	UserName  string `json:"username"`
+}
 
-	var user User
+func (Handler *Handler) getUser(token string) UserRequest {
+
+	var user UserRequest
 	client := &http.Client{}
 	getwayUrl := fmt.Sprintf("%s/api/user", "http://dev.oteacher.org")
 	request, err := http.NewRequest("GET", getwayUrl, nil)
-	request.Header.Set("Authorization", c.GetHeader("Authorization"))
+	request.Header.Set("Authorization", token)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return user
 	}
 	res, err := client.Do(request)
 	if err != nil {
@@ -295,12 +298,7 @@ func (Handler *Handler) getUser(c *gin.Context) {
 		fmt.Println(derr)
 	}
 
-	c.Set("userId", strconv.Itoa(user.Id))
-	c.Set("Avatar", user.Avatar)
-	c.Set("FirstName", user.FirstName)
-	c.Set("LastName", user.LastName)
-	c.Set("username", user.UserName)
 	Handler.UpdateUser(UserDto{UserId: strconv.Itoa(user.Id), UserName: user.UserName, FirstName: user.FirstName, LastName: user.LastName, AvatarUrl: user.Avatar})
-	c.Next()
+	return user
 
 }

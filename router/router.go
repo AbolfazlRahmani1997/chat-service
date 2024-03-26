@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"server/internal/ws"
 	"strconv"
 	"time"
@@ -34,7 +33,7 @@ func InitRouter(wsHandler *ws.Handler) {
 	r.POST("/chat/ws/createRoom", wsHandler.CreateRoom)
 	r.GET("/chat/ws/joinRoom/:roomId", wsHandler.JoinRoom)
 	r.GET("/chat/ws/seenMessage/:roomId", wsHandler.ReadMessage)
-	r.GET("/chat/ws/getRooms/:userId", wsHandler.GetRooms)
+	r.GET("/chat/ws/getRooms/", wsHandler.GetRooms)
 	r.GET("/chat/ws/syncRooms/", wsHandler.SyncRoom)
 	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
 }
@@ -56,7 +55,7 @@ func Auth(handler ws.Handler) gin.HandlerFunc {
 		var user User
 		// Set example variable
 		client := &http.Client{}
-		getwayUrl := fmt.Sprintf("%s/api/user", os.Getenv("GATEWAY_URL"))
+		getwayUrl := fmt.Sprintf("%s/api/user", "http://dev.oteacher.org/")
 		request, err := http.NewRequest("GET", getwayUrl, nil)
 		request.Header.Set("Authorization", c.GetHeader("Authorization"))
 		if err != nil {
