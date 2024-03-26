@@ -206,12 +206,10 @@ func (h *Hub) Run() {
 				for _, cl := range h.Rooms[m.RoomID].Clients {
 					if cl.ID != m.ClientID {
 						if ok := cl.Status == online; ok {
-							go func() {
-								m.Deliver = append(m.Deliver, cl.ID)
+							m.Deliver = append(m.Deliver, cl.ID)
 
-								h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
-								cl.Message <- m
-							}()
+							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
+							cl.Message <- m
 
 						}
 
