@@ -133,11 +133,14 @@ func (h *Hub) Run() {
 				for _, member := range members {
 					if user, ok := h.Users[member.Id]; ok {
 						if user.online {
-							user.roomStatuses <- &RoomStatus{
-								RoomId:  h.Rooms[cl.RoomID].ID,
-								Status:  online,
-								Message: "",
-							}
+							go func() {
+								user.roomStatuses <- &RoomStatus{
+									RoomId:  h.Rooms[cl.RoomID].ID,
+									Status:  online,
+									Message: "",
+								}
+							}()
+
 						}
 					}
 				}
