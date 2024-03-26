@@ -5,6 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
 )
 
@@ -35,8 +36,10 @@ func (receiver RoomMongoRepository) GetMyRooms(userId string) []Room {
 	filter := bson.M{
 		"members.id": userId,
 	}
+	findOptions := options.FindOptions{}
+	opts := findOptions.SetSort(bson.D{{"last_message.created_at", -1}})
 
-	cur, err := receiver.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter)
+	cur, err := receiver.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter, opts)
 	err = cur.All(context.TODO(), &rooms)
 	if err != nil {
 		return rooms
