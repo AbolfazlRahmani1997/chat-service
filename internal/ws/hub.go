@@ -71,9 +71,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-
-	mqBroker.Consume()
+	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+	//
+	//mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -147,7 +147,6 @@ func (h *Hub) Run() {
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				if _, ok := h.Rooms[cl.RoomID].Clients[cl.ID]; ok {
 					fmt.Println(cl.Status)
-
 					close(cl.Message)
 					delete(h.Rooms[cl.RoomID].Clients, cl.ID)
 				}
@@ -204,10 +203,12 @@ func (h *Hub) Run() {
 				for _, cl := range h.Rooms[m.RoomID].Clients {
 					if cl.ID != m.ClientID {
 						if ok := cl.Status == online; ok {
-							m.Deliver = append(m.Deliver, cl.ID)
+							go func() {
+								m.Deliver = append(m.Deliver, cl.ID)
 
-							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
-							cl.Message <- m
+								h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
+								cl.Message <- m
+							}()
 
 						}
 
