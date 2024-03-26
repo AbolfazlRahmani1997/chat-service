@@ -71,9 +71,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-	//
-	//mqBroker.Consume()
+	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+
+	mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -189,10 +189,13 @@ func (h *Hub) Run() {
 
 						if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
 							if user.UserId != m.ClientID {
-								user.roomStatuses <- &RoomStatus{
-									RoomId:  m.RoomID,
-									Message: m.Content,
-								}
+								go func() {
+									user.roomStatuses <- &RoomStatus{
+										RoomId:  m.RoomID,
+										Message: m.Content,
+									}
+								}()
+
 							}
 						}
 
