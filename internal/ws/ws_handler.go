@@ -69,30 +69,38 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 }
 
 func (h *Handler) JoinRoom(c *gin.Context) {
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	roomID := c.Param("roomId")
 	room := h.hub.MessageService.MessageRepository.GetRoomById(roomID)
 
-	h.hub.RoomService.SyncUser(room)
-	if _, ok := h.hub.Rooms[roomID]; !ok {
-		h.hub.Room <- &room
-	}
-
-	clientID := c.Query("userId")
+	token := c.Query("token")
+	token = fmt.Sprintf("%s", token)
+	userAuthed := h.getUser(token)
+	clientID := strconv.Itoa(userAuthed.Id)
 
 	page := c.Query("page")
 
 	userOwner, _, roles := hasAccess(clientID, room.Members, []string{"Owner", "Writer"})
 	if !(userOwner) {
 		c.JSON(http.StatusForbidden, "Access Deny ")
+		err := conn.Close()
+		if err != nil {
+			return
+		}
 		return
 	}
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+
 	cl := &Client{
 		Conn:   conn,
 		ID:     clientID,
 		RoomID: roomID,
 		Status: online,
 	}
+	go h.hub.RoomService.SyncUser(room)
+	if _, ok := h.hub.Rooms[roomID]; !ok {
+		h.hub.Room <- &room
+	}
+
 	if roles == nil {
 		cl.Message = make(chan *Message, 3)
 
