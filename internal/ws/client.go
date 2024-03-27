@@ -17,13 +17,14 @@ const (
 )
 
 type Client struct {
-	Conn        *websocket.Conn
-	ReadMessage *websocket.Conn
-	Message     chan *Message
-	ID          string `json:"id"`
-	RoomID      string `json:"roomId"`
-	Username    string `json:"username"`
-	Status      string `json:"status"`
+	Conn          []*websocket.Conn
+	ReadMessage   *websocket.Conn
+	Message       chan *Message
+	ChanelMessage chan *Message
+	ID            string `json:"id"`
+	RoomID        string `json:"roomId"`
+	Username      string `json:"username"`
+	Status        string `json:"status"`
 }
 
 type Message struct {
@@ -40,43 +41,73 @@ type Message struct {
 
 func (c *Client) writeMessage() {
 	defer func() {
-		c.Conn.Close()
+
 	}()
 
 	for {
 		message, ok := <-c.Message
+		c.writeInAll(message)
 		if !ok {
 			return
 		}
-		err := c.Conn.WriteJSON(message)
+
+	}
+}
+
+// write in all connection
+func (c *Client) writeInAll(m *Message) {
+	for i, conn := range c.Conn {
+		fmt.Println(i)
+		err := conn.WriteJSON(m)
 		if err != nil {
 			fmt.Println(err)
-			return
+
 		}
+	}
+}
+
+func (c *Client) readerMessage(index int) {
+	defer func() {
+		if len(c.Conn) == 0 {
+			close(c.ChanelMessage)
+		}
+	}()
+	for {
+		_, message, err := c.Conn[index].ReadMessage()
+
+		if err != nil {
+			fmt.Println(err)
+			c.Conn[index].Close()
+			c.Conn = append(c.Conn[:index], c.Conn[index+1:]...)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+				break
+			}
+		}
+		msg := &Message{
+			Content:  string(message),
+			RoomID:   c.RoomID,
+			Username: c.Username,
+			ClientID: c.ID,
+		}
+
+		c.ChanelMessage <- msg
+
 	}
 }
 
 func (c *Client) readMessage(hub *Hub) {
 	defer func() {
 		hub.Unregister <- c
-		c.Conn.Close()
 	}()
 
 	for {
-		_, m, err := c.Conn.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
-			}
+		m, ok := <-c.ChanelMessage
+		if !ok {
 			break
 		}
-		msg := &Message{
-			Content:  string(m),
-			RoomID:   c.RoomID,
-			Username: c.Username,
-			ClientID: c.ID,
-		}
-		hub.Broadcast <- msg
+
+		hub.Broadcast <- m
 	}
 }
 

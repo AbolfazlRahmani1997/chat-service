@@ -117,11 +117,14 @@ func (h *Hub) Run() {
 		case cl := <-h.Register:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				r := h.Rooms[cl.RoomID]
-				if _, ok := r.Clients[cl.ID]; ok {
+				if client, ok := r.Clients[cl.ID]; ok {
+					cl.Conn = append(client.Conn, cl.Conn[0])
+					go cl.readerMessage(len(cl.Conn) - 1)
 					cl.Message = make(chan *Message)
 					cl.Status = online
 
 				} else {
+					go cl.readerMessage(0)
 					r.Clients[cl.ID] = cl
 				}
 				r.Clients[cl.ID] = cl

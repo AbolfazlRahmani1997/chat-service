@@ -90,17 +90,20 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	cl := &Client{
-		Conn:   conn,
-		ID:     clientID,
-		RoomID: roomID,
-		Status: online,
-	}
 	go h.hub.RoomService.SyncUser(room)
 	if _, ok := h.hub.Rooms[roomID]; !ok {
 		h.hub.Room <- &room
 	}
-
+	var cl *Client
+	var connectionPool []*websocket.Conn
+	connectionPool = append(connectionPool, conn)
+	cl = &Client{
+		Conn:          connectionPool,
+		ID:            clientID,
+		RoomID:        roomID,
+		ChanelMessage: make(chan *Message),
+		Status:        online,
+	}
 	if roles == nil {
 		cl.Message = make(chan *Message, 3)
 
@@ -110,7 +113,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		}
 
 	} else {
-
 		cl.Message = make(chan *Message)
 	}
 
@@ -298,7 +300,7 @@ func (Handler *Handler) getUser(token string) UserRequest {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println("sendRequest")
+	fmt.Println(res.Status)
 	body, _ := ioutil.ReadAll(res.Body)
 	derr := json.Unmarshal(body, &user)
 
