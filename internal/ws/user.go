@@ -18,19 +18,24 @@ type User struct {
 func (User *User) WireRooms(h *Hub) {
 	defer func() {
 		User.StatusConnection.Close()
+		close(User.roomStatuses)
 	}()
 	for {
 		select {
-		case roomStatuses, _ := <-User.roomStatuses:
-			if User.online == true {
-				err := User.StatusConnection.WriteJSON(roomStatuses)
-				if err != nil {
+		case roomStatuses, ok := <-User.roomStatuses:
+			if ok {
+				if User.online == true {
+					err := User.StatusConnection.WriteJSON(roomStatuses)
+					if err != nil {
+					}
+				} else {
+					_, _, err := User.StatusConnection.ReadMessage()
+					if err != nil {
+						break
+					}
+
 				}
 			} else {
-				_, _, err := User.StatusConnection.ReadMessage()
-				if err != nil {
-					break
-				}
 
 			}
 
