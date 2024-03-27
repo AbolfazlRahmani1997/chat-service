@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
+	"strconv"
 )
 
 type RoomMongoRepository struct {
@@ -31,17 +32,21 @@ func (r RoomMongoRepository) getById(roomId string) Room {
 	return room
 }
 
-func (receiver RoomMongoRepository) GetMyRooms(userId string) []Room {
+func (receiver RoomMongoRepository) GetMyRooms(userId string, page string) []Room {
 	var rooms []Room
 	filter := bson.M{
 		"members.id": userId,
 	}
-	findOptions := options.FindOptions{}
+	limit, _ := strconv.Atoi(page)
+	l := int64(5)
+	skip := int64(limit*5 - 5)
+	findOptions := options.FindOptions{Skip: &skip, Limit: &l}
 	opts := findOptions.SetSort(bson.D{{"last_message.created_at", -1}})
 
 	cur, err := receiver.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter, opts)
 	err = cur.All(context.TODO(), &rooms)
 	if err != nil {
+		fmt.Println(err)
 		return rooms
 	}
 	return rooms
@@ -65,13 +70,11 @@ func (r RoomMongoRepository) lastMessage(id string, message Message) bool {
 	return true
 }
 
-func (r RoomMongoRepository) update(room Room) *mongo.UpdateResult {
-	fliter := bson.D{{"$set", bson.D{{"Status", room.Status}}}}
-	result, err := r.MongoDbRepository.Collection("rooms").UpdateByID(context.TODO(), room.ID, fliter)
-	if err != nil {
-		fmt.Println(err)
-		return nil
-	}
+func (r RoomMongoRepository) update(room Room) *mongo.SingleResult {
+	fliter := bson.M{"id": room.ID}
+	update := bson.D{{"$set", bson.D{{"status", room.Status}}}}
+	result := r.MongoDbRepository.Collection("rooms").FindOneAndUpdate(context.Background(), fliter, update)
+
 	return result
 }
 func (r RoomMongoRepository) updateMember(room Room) *mongo.SingleResult {

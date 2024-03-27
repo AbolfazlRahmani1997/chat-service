@@ -158,7 +158,7 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	userAuthed := h.getUser(token)
 	userId := strconv.Itoa(userAuthed.Id)
-	room := h.hub.RoomService.GetMyRoom(userId)
+	room := h.hub.RoomService.GetMyRoom(userId, "1")
 
 	if err != nil {
 		fmt.Println(err)
@@ -299,7 +299,6 @@ func (Handler *Handler) getUser(token string) UserRequest {
 		fmt.Println(err)
 	}
 	fmt.Println("sendRequest")
-	fmt.Println(res.Body)
 	body, _ := ioutil.ReadAll(res.Body)
 	derr := json.Unmarshal(body, &user)
 

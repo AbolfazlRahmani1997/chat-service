@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 )
@@ -37,23 +38,43 @@ func (User *User) WireRooms(h *Hub) {
 	}
 }
 
+type MessageReceive struct {
+	Page string `json:"Page,omitempty"`
+}
+
 func (User *User) userConnection(h *Hub) {
 	defer func() {
 		h.Left <- User
 		User.Conn.Close()
 	}()
-
+	var messageClient MessageReceive
+	var page string
 	for {
-		err := User.Conn.WriteJSON(h.RoomService.GetMyRoom(User.UserId))
-		if err != nil {
-			fmt.Println("Error reading message:", err)
-			break
+
+		if page != "" {
+			err := User.Conn.WriteJSON(h.RoomService.GetMyRoom(User.UserId, page))
+			if err != nil {
+				fmt.Println("Error reading message:", err)
+				break
+			}
 		}
-		_, _, err = User.Conn.ReadMessage()
+
+		var message []byte
+		_, message, err := User.Conn.ReadMessage()
 		if err != nil {
 			break
 
 		}
+		if len(message) > 0 {
+			err = json.Unmarshal(message, &messageClient)
+			if err != nil {
+				fmt.Println(err)
+			}
+			page = messageClient.Page
+		} else {
+			page = ""
+		}
+
 	}
 
 }

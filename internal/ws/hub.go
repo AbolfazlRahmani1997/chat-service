@@ -42,7 +42,7 @@ type Room struct {
 	Temporary bool               `json:"type" `
 	Members   []Member           `json:"members"`
 	Message   Message            `json:"message" bson:"last_message"`
-	Status    status             `json:"status" `
+	Status    status             `json:"status,omitempty" `
 	Clients   map[string]*Client `json:"clients"`
 }
 
