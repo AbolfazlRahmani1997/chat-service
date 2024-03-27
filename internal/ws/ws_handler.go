@@ -159,7 +159,13 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	userAuthed := h.getUser(token)
 	userId := strconv.Itoa(userAuthed.Id)
 	room := h.hub.RoomService.GetMyRoom(userId, "1")
-
+	if room == nil {
+		err := conn.Close()
+		if err != nil {
+			return
+		}
+		return
+	}
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -298,7 +304,7 @@ func (Handler *Handler) getUser(token string) UserRequest {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println("sendRequest")
+
 	body, _ := ioutil.ReadAll(res.Body)
 	derr := json.Unmarshal(body, &user)
 
