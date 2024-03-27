@@ -38,8 +38,8 @@ func (receiver RoomMongoRepository) GetMyRooms(userId string, page string) []Roo
 		"members.id": userId,
 	}
 	limit, _ := strconv.Atoi(page)
-	l := int64(5)
-	skip := int64(limit*5 - 5)
+	l := int64(10)
+	skip := int64(limit*10 - 10)
 	findOptions := options.FindOptions{Skip: &skip, Limit: &l}
 	opts := findOptions.SetSort(bson.D{{"last_message.created_at", -1}})
 
