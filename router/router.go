@@ -35,7 +35,7 @@ func InitRouter(wsHandler *ws.Handler) {
 	r.GET("/chat/ws/joinRoom/:roomId", wsHandler.JoinRoom)
 	r.GET("/chat/ws/seenMessage/:roomId", wsHandler.ReadMessage)
 	r.GET("/chat/ws/getRooms/", wsHandler.GetRooms)
-	r.GET("/chat/ws/syncRooms/", wsHandler.SyncRoom)
+	//r.GET("/chat/ws/syncRooms/", wsHandler.SyncRoom)
 	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
 }
 
