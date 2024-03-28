@@ -132,7 +132,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	}
 	messages := h.hub.MessageService.MessageRepository.Mongo.GetMessageNotDelivery(roomID, clientID)
 	if ok := len(messages) != 0; ok {
-		for i := len(messages) - 1; i >= 0; i-- {
+		for i := 0; i <= len(messages)-1; i++ {
 			h.hub.Broadcast <- &Message{
 				ID:        messages[i].ID,
 				Content:   messages[i].Content,
