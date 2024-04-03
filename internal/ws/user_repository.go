@@ -49,6 +49,7 @@ func (receiver UserRepository) UpdateUser(userid string, user UserDto) {
 
 	one, err := receiver.database.Collection("users").UpdateOne(context.TODO(), filter, update)
 	if err != nil {
+		fmt.Println("userUpdate hase eroo")
 		fmt.Println(err)
 	}
 	fmt.Println("updated")

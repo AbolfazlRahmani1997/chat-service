@@ -33,7 +33,7 @@ func (r RoomMongoRepository) getById(roomId string) Room {
 	return room
 }
 
-func (receiver RoomMongoRepository) GetMyRooms(userId string, page string) []Room {
+func (r *RoomMongoRepository) GetMyRooms(userId string, page string) []Room {
 	var rooms []Room
 	filter := bson.M{
 		"members.id": userId,
@@ -44,7 +44,23 @@ func (receiver RoomMongoRepository) GetMyRooms(userId string, page string) []Roo
 	findOptions := options.FindOptions{Skip: &skip, Limit: &l}
 	opts := findOptions.SetSort(bson.D{{"last_message.created_at", -1}})
 
-	cur, err := receiver.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter, opts)
+	cur, err := r.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter, opts)
+	err = cur.All(context.TODO(), &rooms)
+	if err != nil {
+		fmt.Println(err)
+		return rooms
+	}
+	return rooms
+}
+func (r *RoomMongoRepository) GetOlineMyRooms(userId string) []Room {
+	var rooms []Room
+	filter := bson.M{
+		"members.id": userId,
+	}
+	findOptions := options.FindOptions{}
+	opts := findOptions.SetSort(bson.D{{"last_message.created_at", -1}})
+
+	cur, err := r.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter, opts)
 	err = cur.All(context.TODO(), &rooms)
 	if err != nil {
 		fmt.Println(err)

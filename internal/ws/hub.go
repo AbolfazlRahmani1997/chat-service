@@ -229,8 +229,15 @@ func (h *Hub) Manager() {
 		select {
 		case user, _ := <-h.Join:
 			h.Users[user.UserId] = user
+
 		case user, _ := <-h.Left:
 			delete(h.Users, user.UserId)
+
 		}
+
 	}
+}
+
+func (h *Hub) OnlineMessage(userId string) {
+	h.RoomService.RoomRepository.GetMyRooms(userId)
 }

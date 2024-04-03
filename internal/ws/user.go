@@ -59,7 +59,7 @@ func (User *User) userConnection(h *Hub) {
 		if page != "" {
 			err := User.Conn.WriteJSON(h.RoomService.GetMyRoom(User.UserId, page))
 			if err != nil {
-				fmt.Println("Error reading message:", err)
+				fmt.Println("error reading message:", err)
 				break
 			}
 		}
