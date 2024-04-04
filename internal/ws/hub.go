@@ -53,6 +53,7 @@ type Hub struct {
 	ReadAble       chan *ReadMessage
 	Join           chan *User
 	Left           chan *User
+	Evade          chan *User
 	Unregister     chan *Client
 	Broadcast      chan *Message
 	Room           chan *Room
@@ -71,9 +72,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-
-	mqBroker.Consume()
+	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+	//
+	//mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -83,6 +84,7 @@ func NewHub(client *mongo.Client) *Hub {
 		Broadcast:      make(chan *Message, 5),
 		Join:           make(chan *User),
 		Left:           make(chan *User),
+		Evade:          make(chan *User),
 		Users:          make(map[string]*User),
 		Room:           roomChan,
 		MessageService: service,
@@ -229,8 +231,31 @@ func (h *Hub) Manager() {
 		select {
 		case user, _ := <-h.Join:
 			h.Users[user.UserId] = user
+			go h.OnlineMessage(user.UserId, online)
 		case user, _ := <-h.Left:
+			go h.OnlineMessage(user.UserId, offline)
 			delete(h.Users, user.UserId)
+		case user, _ := <-h.Evade:
+			go h.OnlineMessage(user.UserId, evade)
+		}
+
+	}
+}
+
+func (h *Hub) OnlineMessage(userId string, status status) {
+	rooms := h.RoomService.RoomRepository.GetOlineMyRooms(userId)
+	for _, room := range rooms {
+		for _, client := range room.Members {
+			if client.Id != userId {
+				if user, ok := h.Users[client.Id]; ok {
+					user.roomStatuses <- &RoomStatus{
+						RoomId: room.ID,
+						Status: status,
+					}
+				}
+			}
+
 		}
 	}
+
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{
@@ -20,13 +21,15 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
-	hub *Hub
+	hub         *Hub
+	UserHandler map[string]UserRequest
 	MessageService
 }
 
 func NewHandler(h *Hub) *Handler {
 	return &Handler{
-		hub: h,
+		hub:         h,
+		UserHandler: make(map[string]UserRequest),
 	}
 }
 
@@ -38,44 +41,59 @@ type CreateRoomReq struct {
 	Writer []string `json:"Writer"`
 }
 
-func (h *Handler) UpdateUser(dto UserDto) {
-	h.hub.RoomService.MemberRepository.UpdateUser(dto.UserId, dto)
+func (Handler *Handler) UpdateUser(dto UserDto) {
+	Handler.hub.RoomService.MemberRepository.UpdateUser(dto.UserId, dto)
 }
 
-func (h *Handler) CreateRoom(c *gin.Context) {
+// Store UpdateUserPool in this Pool
+func (Handler *Handler) UpdateUserPool() {
+	ticker := time.NewTicker((60 * 60) * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			for i, _ := range Handler.UserHandler {
+				if Handler.UserHandler[i].Time.Before(time.Now()) {
+					delete(Handler.UserHandler, i)
+				}
+			}
+		}
+	}
+}
+
+func (Handler *Handler) CreateRoom(c *gin.Context) {
 	var req CreateRoomReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	room := h.hub.MessageService.MessageRepository.GetRoomById(req.ID)
+	room := Handler.hub.MessageService.MessageRepository.GetRoomById(req.ID)
 	if room.ID != "" {
-		h.hub.Rooms[room.ID] = &Room{
+		Handler.hub.Rooms[room.ID] = &Room{
 			ID:      room.ID,
 			Name:    room.Name,
 			Clients: make(map[string]*Client),
 		}
 	} else {
-		h.hub.Rooms[req.ID] = &Room{
+		Handler.hub.Rooms[req.ID] = &Room{
 			ID:      req.ID,
 			Name:    req.Name,
 			Clients: make(map[string]*Client),
 		}
-		h.hub.MessageService.MessageRepository.Mongo.InsertRoom(*h.hub.Rooms[req.ID])
+		Handler.hub.MessageService.MessageRepository.Mongo.InsertRoom(*Handler.hub.Rooms[req.ID])
 	}
 
 	c.JSON(http.StatusOK, req)
 
 }
 
-func (h *Handler) JoinRoom(c *gin.Context) {
+func (Handler *Handler) JoinRoom(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	roomID := c.Param("roomId")
-	room := h.hub.MessageService.MessageRepository.GetRoomById(roomID)
+	room := Handler.hub.MessageService.MessageRepository.GetRoomById(roomID)
 
 	token := c.Query("token")
 	token = fmt.Sprintf("%s", token)
-	userAuthed := h.getUser(token)
+	userAuthed := Handler.getUser(token)
 	clientID := strconv.Itoa(userAuthed.Id)
 
 	page := c.Query("page")
@@ -96,9 +114,9 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		RoomID: roomID,
 		Status: online,
 	}
-	go h.hub.RoomService.SyncUser(room)
-	if _, ok := h.hub.Rooms[roomID]; !ok {
-		h.hub.Room <- &room
+	go Handler.hub.RoomService.SyncUser(room)
+	if _, ok := Handler.hub.Rooms[roomID]; !ok {
+		Handler.hub.Room <- &room
 	}
 
 	if roles == nil {
@@ -122,18 +140,18 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	h.hub.Register <- cl
+	Handler.hub.Register <- cl
 
 	go cl.writeMessage()
-	messagesRoom := h.hub.MessageService.MessageRepository.Mongo.GetRoomMessage(roomID, page)
+	messagesRoom := Handler.hub.MessageService.MessageRepository.Mongo.GetRoomMessage(roomID, page)
 	err = conn.WriteJSON(messagesRoom)
 	if err != nil {
 		return
 	}
-	messages := h.hub.MessageService.MessageRepository.Mongo.GetMessageNotDelivery(roomID, clientID)
+	messages := Handler.hub.MessageService.MessageRepository.Mongo.GetMessageNotDelivery(roomID, clientID)
 	if ok := len(messages) != 0; ok {
 		for i := 0; i <= len(messages)-1; i++ {
-			h.hub.Broadcast <- &Message{
+			Handler.hub.Broadcast <- &Message{
 				ID:        messages[i].ID,
 				Content:   messages[i].Content,
 				RoomID:    messages[i].RoomID,
@@ -149,16 +167,16 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 			}
 		}
 	}
-	cl.readMessage(h.hub)
+	cl.readMessage(Handler.hub)
 
 }
-func (h *Handler) GetRooms(c *gin.Context) {
+func (Handler *Handler) GetRooms(c *gin.Context) {
 	token := c.Query("token")
 	token = fmt.Sprintf("%s", token)
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	userAuthed := h.getUser(token)
+	userAuthed := Handler.getUser(token)
 	userId := strconv.Itoa(userAuthed.Id)
-	room := h.hub.RoomService.GetMyRoom(userId, "1")
+	room := Handler.hub.RoomService.GetMyRoom(userId, "1")
 	if room == nil {
 		err := conn.Close()
 		if err != nil {
@@ -174,39 +192,40 @@ func (h *Handler) GetRooms(c *gin.Context) {
 		fmt.Println(err)
 		return
 	}
+
 	user := &User{
 		Conn:         conn,
 		UserId:       userId,
-		online:       false,
+		online:       true,
 		roomStatuses: make(chan *RoomStatus),
 	}
-	h.hub.Join <- user
-	user.userConnection(h.hub)
+	Handler.hub.Join <- user
+	user.userConnection(Handler.hub)
 
 }
-func (h *Handler) SyncRoom(c *gin.Context) {
+func (Handler *Handler) SyncRoom(c *gin.Context) {
 	token := c.Query("token")
 	token = fmt.Sprintf("%s", token)
 	conn, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
-	userAuthed := h.getUser(token)
+	userAuthed := Handler.getUser(token)
 	userId := strconv.Itoa(userAuthed.Id)
-	if _, ok := h.hub.Users[userId]; !ok {
+	if _, ok := Handler.hub.Users[userId]; !ok {
 		c.JSON(404, "not found")
 	} else {
-		h.hub.Users[userId].online = true
-		h.hub.Users[userId].StatusConnection = conn
-		h.hub.Users[userId].WireRooms(h.hub)
+		Handler.hub.Users[userId].online = true
+		Handler.hub.Users[userId].StatusConnection = conn
+		Handler.hub.Users[userId].WireRooms(Handler.hub)
 	}
 
 }
-func (h *Handler) ReadMessage(c *gin.Context) {
+func (Handler *Handler) ReadMessage(c *gin.Context) {
 	userId := c.GetString("userId")
 	roomId := c.Param("roomId")
-	clients := h.hub.Rooms[roomId].Clients
+	clients := Handler.hub.Rooms[roomId].Clients
 	conn, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
 	client := clients[userId]
 	client.ReadMessage = conn
-	client.seenMessage(h.hub)
+	client.seenMessage(Handler.hub)
 }
 
 type ClientRes struct {
@@ -214,14 +233,14 @@ type ClientRes struct {
 	Username string `json:"username"`
 }
 
-func (h *Handler) GetClients(c *gin.Context) {
+func (Handler *Handler) GetClients(c *gin.Context) {
 	var clients []ClientRes
 	roomId := c.Param("roomId")
-	if _, ok := h.hub.Rooms[roomId]; !ok {
+	if _, ok := Handler.hub.Rooms[roomId]; !ok {
 		clients = make([]ClientRes, 0)
 		c.JSON(http.StatusOK, clients)
 	}
-	for _, c := range h.hub.Rooms[roomId].Clients {
+	for _, c := range Handler.hub.Rooms[roomId].Clients {
 		clients = append(clients, ClientRes{
 			ID:       c.ID,
 			Username: c.Username,
@@ -282,36 +301,42 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 }
 
 type UserRequest struct {
-	Id        int    `json:"id"`
-	Avatar    string `json:"avatar"`
-	FirstName string `json:"firstname"`
-	LastName  string `json:"lastname"`
-	UserName  string `json:"username"`
+	Id        int       `json:"id"`
+	Avatar    string    `json:"avatar"`
+	FirstName string    `json:"firstname"`
+	LastName  string    `json:"lastname"`
+	UserName  string    `json:"username"`
+	Time      time.Time `json:"created_at"`
 }
 
 func (Handler *Handler) getUser(token string) UserRequest {
 
 	var user UserRequest
+
+	if userRequest, ok := Handler.UserHandler[token]; ok {
+		return userRequest
+	}
 	client := &http.Client{}
-	getwayUrl := fmt.Sprintf("%s/api/user", "http://dev.oteacher.org")
-	request, err := http.NewRequest("GET", getwayUrl, nil)
+	gateway := fmt.Sprintf("%s/api/user", "http://dev.oteacher.org")
+	request, err := http.NewRequest("GET", gateway, nil)
 	request.Header.Set("Authorization", token)
 	if err != nil {
 		fmt.Println(err)
 		return user
 	}
 	res, err := client.Do(request)
+
+	fmt.Println(res.StatusCode)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	body, _ := ioutil.ReadAll(res.Body)
-	derr := json.Unmarshal(body, &user)
-
-	if derr != nil {
-		fmt.Println(derr)
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		fmt.Println(err)
 	}
-
+	Handler.UserHandler[token] = user
 	Handler.UpdateUser(UserDto{UserId: strconv.Itoa(user.Id), UserName: user.UserName, FirstName: user.FirstName, LastName: user.LastName, AvatarUrl: user.Avatar})
 	return user
 
