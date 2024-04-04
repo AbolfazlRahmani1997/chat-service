@@ -17,7 +17,7 @@ const (
 )
 
 type Client struct {
-	Conn          []*websocket.Conn
+	Conn          map[string]*websocket.Conn
 	ReadMessage   *websocket.Conn
 	Message       chan *Message
 	ChanelMessage chan *Message
@@ -28,15 +28,16 @@ type Client struct {
 }
 
 type Message struct {
-	ID        primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
-	Content   string             `json:"Content,omitempty"  bson:"content"`
-	RoomID    string             `json:"RoomID,omitempty"  bson:"roomID"`
-	Username  string             `json:"Username,omitempty" bson:"username" `
-	ClientID  string             `json:"ClientID,omitempty" bson:"clientID"`
-	Deliver   []string           `json:"Deliver,omitempty" bson:"Deliver"`
-	Read      []string           `json:"Read,omitempty" bson:"Read"`
-	CreatedAt time.Time          `json:"CreatedAt"bson:"created_at"`
-	UpdatedAt time.Time          `bson:"updated_at"`
+	ID           primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
+	Content      string             `json:"Content,omitempty"  bson:"content"`
+	RoomID       string             `json:"RoomID,omitempty"  bson:"roomID"`
+	Username     string             `json:"Username,omitempty" bson:"username" `
+	ClientID     string             `json:"ClientID,omitempty" bson:"clientID"`
+	Deliver      []string           `json:"Deliver,omitempty" bson:"Deliver"`
+	Read         []string           `json:"Read,omitempty" bson:"Read"`
+	connectionId string
+	CreatedAt    time.Time `json:"CreatedAt"bson:"created_at"`
+	UpdatedAt    time.Time `bson:"updated_at"`
 }
 
 func (c *Client) writeMessage() {
@@ -57,38 +58,38 @@ func (c *Client) writeMessage() {
 // write in all connection
 func (c *Client) writeInAll(m *Message) {
 	for i, conn := range c.Conn {
-		fmt.Println(i)
-		err := conn.WriteJSON(m)
-		if err != nil {
-			fmt.Println(err)
+		if m.connectionId != i {
+			err := conn.WriteJSON(m)
+			if err != nil {
+				fmt.Println(err)
 
+			}
 		}
+
 	}
 }
 
-func (c *Client) readerMessage(index int) {
+func (c *Client) readerMessage(index string) {
 	defer func() {
-		if len(c.Conn) == 0 {
-			close(c.ChanelMessage)
-		}
+		c.Conn[index].Close()
+		delete(c.Conn, index)
 	}()
 	for {
+		fmt.Println("run reader message ", index)
 		_, message, err := c.Conn[index].ReadMessage()
-
 		if err != nil {
-			fmt.Println(err)
-			c.Conn[index].Close()
-			c.Conn = append(c.Conn[:index], c.Conn[index+1:]...)
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
-				break
+
 			}
+			break
 		}
 		msg := &Message{
-			Content:  string(message),
-			RoomID:   c.RoomID,
-			Username: c.Username,
-			ClientID: c.ID,
+			Content:      string(message),
+			connectionId: index,
+			RoomID:       c.RoomID,
+			Username:     c.Username,
+			ClientID:     c.ID,
 		}
 
 		c.ChanelMessage <- msg

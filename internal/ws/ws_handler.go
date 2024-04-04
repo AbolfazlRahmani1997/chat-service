@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/oklog/ulid/v2"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -95,8 +96,10 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		h.hub.Room <- &room
 	}
 	var cl *Client
-	var connectionPool []*websocket.Conn
-	connectionPool = append(connectionPool, conn)
+	var connectionPool map[string]*websocket.Conn
+	connectionPool = make(map[string]*websocket.Conn)
+	connectionPool[ulid.Make().String()] = conn
+
 	cl = &Client{
 		Conn:          connectionPool,
 		ID:            clientID,
@@ -306,7 +309,6 @@ func (Handler *Handler) getUser(token string) UserRequest {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(res.Status)
 	body, _ := ioutil.ReadAll(res.Body)
 	derr := json.Unmarshal(body, &user)
 

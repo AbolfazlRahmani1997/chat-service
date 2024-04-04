@@ -2,6 +2,7 @@ package ws
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -71,9 +72,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-
-	mqBroker.Consume()
+	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+	//
+	//mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -115,17 +116,20 @@ func (h *Hub) Run() {
 
 		//when user join the chat page
 		case cl := <-h.Register:
+
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				r := h.Rooms[cl.RoomID]
 				if client, ok := r.Clients[cl.ID]; ok {
-					cl.Conn = append(client.Conn, cl.Conn[0])
-					go cl.readerMessage(len(cl.Conn) - 1)
+					cl.Conn = mergeConnection(cl.Conn, client.Conn)
 					cl.Message = make(chan *Message)
 					cl.Status = online
 
 				} else {
-					go cl.readerMessage(0)
 					r.Clients[cl.ID] = cl
+				}
+				for s, _ := range cl.Conn {
+					fmt.Println("connection", s)
+					go cl.readerMessage(s)
 				}
 				r.Clients[cl.ID] = cl
 				room := h.Rooms[cl.RoomID]
@@ -189,9 +193,9 @@ func (h *Hub) Run() {
 				h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
 
 				members := h.Rooms[m.RoomID].Members
+
 				for _, userID := range members {
 					if user, ok := h.Users[userID.Id]; ok {
-
 						if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
 							if user.UserId != m.ClientID {
 								go func() {
@@ -206,15 +210,15 @@ func (h *Hub) Run() {
 
 					}
 				}
+				fmt.Println(len(h.Rooms[m.RoomID].Clients))
 				for _, cl := range h.Rooms[m.RoomID].Clients {
-					if cl.ID != m.ClientID {
-						if ok := cl.Status == online; ok {
+
+					if ok := cl.Status == online; ok {
+						if cl.ID != m.ClientID {
 							m.Deliver = append(m.Deliver, cl.ID)
-
 							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
-							cl.Message <- m
-
 						}
+						cl.Message <- m
 
 					}
 
@@ -236,4 +240,15 @@ func (h *Hub) Manager() {
 			delete(h.Users, user.UserId)
 		}
 	}
+}
+
+func mergeConnection(m1 map[string]*websocket.Conn, m2 map[string]*websocket.Conn) map[string]*websocket.Conn {
+	merged := make(map[string]*websocket.Conn)
+	for k, v := range m1 {
+		merged[k] = v
+	}
+	for key, value := range m2 {
+		merged[key] = value
+	}
+	return merged
 }
