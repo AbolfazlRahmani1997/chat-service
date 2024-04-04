@@ -35,7 +35,7 @@ type Message struct {
 	ClientID  string             `json:"ClientID,omitempty" bson:"clientID"`
 	Deliver   []string           `json:"Deliver,omitempty" bson:"Deliver"`
 	Read      []string           `json:"Read,omitempty" bson:"Read"`
-	CreatedAt time.Time          `bson:"created_at"`
+	CreatedAt time.Time          `json:"CreatedAt"bson:"created_at"`
 	UpdatedAt time.Time          `bson:"updated_at"`
 }
 

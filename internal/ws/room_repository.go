@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
 	"strconv"
+	"time"
 )
 
 type RoomMongoRepository struct {
@@ -61,6 +62,8 @@ func (r RoomMongoRepository) lastMessage(id string, message Message) bool {
 
 	_id, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.D{{"_id", _id}}
+	message.CreatedAt = time.Now()
+
 	update := bson.D{{"$set", bson.D{{"last_message", message}}}}
 	_, err := r.MongoDbRepository.Collection("rooms").UpdateOne(context.TODO(), filter, update)
 	if err != nil {
