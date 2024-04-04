@@ -90,11 +90,11 @@ func (Handler *Handler) CreateRoom(c *gin.Context) {
 func (Handler *Handler) JoinRoom(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	roomID := c.Param("roomId")
-	room := h.hub.MessageService.MessageRepository.GetRoomById(roomID)
+	room := Handler.hub.MessageService.MessageRepository.GetRoomById(roomID)
 
 	token := c.Query("token")
 	token = fmt.Sprintf("%s", token)
-	userAuthed := h.getUser(token)
+	userAuthed := Handler.getUser(token)
 	clientID := strconv.Itoa(userAuthed.Id)
 
 	page := c.Query("page")
@@ -109,9 +109,9 @@ func (Handler *Handler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	go h.hub.RoomService.SyncUser(room)
-	if _, ok := h.hub.Rooms[roomID]; !ok {
-		h.hub.Room <- &room
+	go Handler.hub.RoomService.SyncUser(room)
+	if _, ok := Handler.hub.Rooms[roomID]; !ok {
+		Handler.hub.Room <- &room
 	}
 	var cl *Client
 	var connectionPool map[string]*websocket.Conn
