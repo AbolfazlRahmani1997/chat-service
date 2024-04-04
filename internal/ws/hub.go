@@ -2,6 +2,7 @@ package ws
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -119,12 +120,17 @@ func (h *Hub) Run() {
 		case cl := <-h.Register:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				r := h.Rooms[cl.RoomID]
-				if _, ok := r.Clients[cl.ID]; ok {
+				if client, ok := r.Clients[cl.ID]; ok {
+					cl.Conn = mergeConnection(cl.Conn, client.Conn)
 					cl.Message = make(chan *Message)
 					cl.Status = online
 
 				} else {
 					r.Clients[cl.ID] = cl
+				}
+				for s, _ := range cl.Conn {
+					fmt.Println("connection", s)
+					go cl.readerMessage(s)
 				}
 				r.Clients[cl.ID] = cl
 				room := h.Rooms[cl.RoomID]
@@ -206,14 +212,14 @@ func (h *Hub) Run() {
 					}
 				}
 				for _, cl := range h.Rooms[m.RoomID].Clients {
-					if cl.ID != m.ClientID {
-						if ok := cl.Status == online; ok {
+
+					if ok := cl.Status == online; ok {
+						if cl.ID != m.ClientID {
 							m.Deliver = append(m.Deliver, cl.ID)
 
 							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
-							cl.Message <- m
-
 						}
+						cl.Message <- m
 
 					}
 
@@ -258,4 +264,15 @@ func (h *Hub) OnlineMessage(userId string, status status) {
 		}
 	}
 
+}
+
+func mergeConnection(m1 map[string]*websocket.Conn, m2 map[string]*websocket.Conn) map[string]*websocket.Conn {
+	merged := make(map[string]*websocket.Conn)
+	for k, v := range m1 {
+		merged[k] = v
+	}
+	for key, value := range m2 {
+		merged[key] = value
+	}
+	return merged
 }

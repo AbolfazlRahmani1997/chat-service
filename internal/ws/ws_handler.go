@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/oklog/ulid/v2"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -108,17 +109,22 @@ func (Handler *Handler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	cl := &Client{
-		Conn:   conn,
-		ID:     clientID,
-		RoomID: roomID,
-		Status: online,
-	}
 	go Handler.hub.RoomService.SyncUser(room)
 	if _, ok := Handler.hub.Rooms[roomID]; !ok {
 		Handler.hub.Room <- &room
 	}
+	var cl *Client
+	var connectionPool map[string]*websocket.Conn
+	connectionPool = make(map[string]*websocket.Conn)
+	connectionPool[ulid.Make().String()] = conn
 
+	cl = &Client{
+		Conn:          connectionPool,
+		ID:            clientID,
+		RoomID:        roomID,
+		ChanelMessage: make(chan *Message),
+		Status:        online,
+	}
 	if roles == nil {
 		cl.Message = make(chan *Message, 3)
 
@@ -128,7 +134,6 @@ func (Handler *Handler) JoinRoom(c *gin.Context) {
 		}
 
 	} else {
-
 		cl.Message = make(chan *Message)
 	}
 
@@ -192,7 +197,6 @@ func (Handler *Handler) GetRooms(c *gin.Context) {
 		fmt.Println(err)
 		return
 	}
-
 	user := &User{
 		Conn:         conn,
 		UserId:       userId,
