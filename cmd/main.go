@@ -11,14 +11,14 @@ import (
 
 func main() {
 
-	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", "0.0.0.0", "27017")
-	credential := options.Credential{
-		Username: "root",
-		Password: "root",
-	}
+	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", "127.0.0.1", "27017")
+	//credential := options.Credential{
+	//	Username: "root",
+	//	Password: "root",
+	//}
 
 	//serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential)
+	clientOptions := options.Client().ApplyURI(mongoUrl)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		fmt.Println(err)

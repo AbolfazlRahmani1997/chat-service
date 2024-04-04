@@ -18,7 +18,8 @@ type User struct {
 func (User *User) WireRooms(h *Hub) {
 	defer func() {
 		User.StatusConnection.Close()
-		close(User.roomStatuses)
+		h.Evade <- User
+		fmt.Println("close synce")
 	}()
 	for {
 		select {

@@ -11,9 +11,9 @@ import (
 type status string
 
 const (
-	online   = "online"
-	offline  = "offline"
-	isTyping = "isTyping"
+	online  = "online"
+	offline = "offline"
+	evade   = "evade"
 )
 
 type Client struct {
