@@ -54,6 +54,7 @@ type Hub struct {
 	ReadAble       chan *ReadMessage
 	Join           chan *User
 	Left           chan *User
+	Evade          chan *User
 	Unregister     chan *Client
 	Broadcast      chan *Message
 	Room           chan *Room
@@ -72,9 +73,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-	//
-	//mqBroker.Consume()
+	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+
+	mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -84,6 +85,7 @@ func NewHub(client *mongo.Client) *Hub {
 		Broadcast:      make(chan *Message, 5),
 		Join:           make(chan *User),
 		Left:           make(chan *User),
+		Evade:          make(chan *User),
 		Users:          make(map[string]*User),
 		Room:           roomChan,
 		MessageService: service,
@@ -116,7 +118,6 @@ func (h *Hub) Run() {
 
 		//when user join the chat page
 		case cl := <-h.Register:
-
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				r := h.Rooms[cl.RoomID]
 				if client, ok := r.Clients[cl.ID]; ok {
@@ -193,9 +194,9 @@ func (h *Hub) Run() {
 				h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
 
 				members := h.Rooms[m.RoomID].Members
-
 				for _, userID := range members {
 					if user, ok := h.Users[userID.Id]; ok {
+
 						if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
 							if user.UserId != m.ClientID {
 								go func() {
@@ -210,12 +211,12 @@ func (h *Hub) Run() {
 
 					}
 				}
-				fmt.Println(len(h.Rooms[m.RoomID].Clients))
 				for _, cl := range h.Rooms[m.RoomID].Clients {
 
 					if ok := cl.Status == online; ok {
 						if cl.ID != m.ClientID {
 							m.Deliver = append(m.Deliver, cl.ID)
+
 							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
 						}
 						cl.Message <- m
@@ -236,10 +237,33 @@ func (h *Hub) Manager() {
 		select {
 		case user, _ := <-h.Join:
 			h.Users[user.UserId] = user
+			go h.OnlineMessage(user.UserId, online)
 		case user, _ := <-h.Left:
+			go h.OnlineMessage(user.UserId, offline)
 			delete(h.Users, user.UserId)
+		case user, _ := <-h.Evade:
+			go h.OnlineMessage(user.UserId, evade)
+		}
+
+	}
+}
+
+func (h *Hub) OnlineMessage(userId string, status status) {
+	rooms := h.RoomService.RoomRepository.GetOlineMyRooms(userId)
+	for _, room := range rooms {
+		for _, client := range room.Members {
+			if client.Id != userId {
+				if user, ok := h.Users[client.Id]; ok {
+					user.roomStatuses <- &RoomStatus{
+						RoomId: room.ID,
+						Status: status,
+					}
+				}
+			}
+
 		}
 	}
+
 }
 
 func mergeConnection(m1 map[string]*websocket.Conn, m2 map[string]*websocket.Conn) map[string]*websocket.Conn {

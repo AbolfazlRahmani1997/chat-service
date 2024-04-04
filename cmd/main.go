@@ -26,7 +26,9 @@ func main() {
 		fmt.Println(err)
 	}
 	hub := ws.NewHub(client)
+
 	wsHandler := ws.NewHandler(hub)
+	go wsHandler.UpdateUserPool()
 	go hub.Run()
 	go hub.Manager()
 	router.InitRouter(wsHandler)
