@@ -197,14 +197,15 @@ func (Handler *Handler) GetRooms(c *gin.Context) {
 		fmt.Println(err)
 		return
 	}
+	var connectionPool map[string]*websocket.Conn
+	connectionPool = make(map[string]*websocket.Conn)
+	connectionPool[ulid.Make().String()] = conn
 	user := &User{
-		Conn:         conn,
-		UserId:       userId,
-		online:       true,
-		roomStatuses: make(chan *RoomStatus),
+		Conn:   connectionPool,
+		UserId: userId,
+		online: true,
 	}
 	Handler.hub.Join <- user
-	user.userConnection(Handler.hub)
 
 }
 func (Handler *Handler) SyncRoom(c *gin.Context) {
