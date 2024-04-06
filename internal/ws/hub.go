@@ -130,7 +130,6 @@ func (h *Hub) Run() {
 					r.Clients[cl.ID] = cl
 				}
 				for s, _ := range cl.Conn {
-					fmt.Println("connection", s)
 					go cl.readerMessage(s)
 				}
 				r.Clients[cl.ID] = cl
@@ -141,16 +140,14 @@ func (h *Hub) Run() {
 
 				for _, member := range members {
 					if user, ok := h.Users[member.Id]; ok {
-						if user.online {
-							go func() {
-								user.roomStatuses <- &RoomStatus{
-									RoomId:  h.Rooms[cl.RoomID].ID,
-									Status:  online,
-									Message: "",
-								}
-							}()
 
-						}
+						go func() {
+							user.roomStatuses <- &RoomStatus{
+								RoomId: h.Rooms[cl.RoomID].ID,
+								Status: online,
+							}
+						}()
+
 					}
 				}
 			}
@@ -172,14 +169,12 @@ func (h *Hub) Run() {
 
 				for _, member := range members {
 					if user, ok := h.Users[member.Id]; ok {
-						if user.online == true {
-							go func() {
-								user.roomStatuses <- &RoomStatus{
-									RoomId: h.Rooms[cl.RoomID].ID,
-									Status: offline,
-								}
-							}()
-						}
+						go func() {
+							user.roomStatuses <- &RoomStatus{
+								RoomId: h.Rooms[cl.RoomID].ID,
+								Status: offline,
+							}
+						}()
 					}
 				}
 			}
@@ -201,9 +196,10 @@ func (h *Hub) Run() {
 						if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
 							if user.UserId != m.ClientID {
 								go func() {
-									user.chanelMessage <- &SystemMessage{
-										EventType: incomeMessage,
-										Content:   messagePop{body: m.Content, roomId: m.RoomID},
+									user.pupMessage <- &PupMessage{
+										MessageId: m.ID.Hex(),
+										RoomId:    m.RoomID,
+										Content:   m.Content,
 									}
 
 								}()
@@ -244,7 +240,8 @@ func (h *Hub) Manager() {
 			} else {
 
 				user.roomStatuses = make(chan *RoomStatus)
-				user.chanelMessage = make(chan *SystemMessage)
+				user.pupMessage = make(chan *PupMessage)
+				user.chanelNotification = make(chan *SystemMessage)
 				go user.WireRooms(h)
 				h.Users[user.UserId] = user
 			}
