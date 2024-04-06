@@ -11,9 +11,9 @@ import (
 type status string
 
 const (
-	online  = "online"
-	offline = "offline"
-	evade   = "evade"
+	online  status = "online"
+	offline status = "offline"
+	evade   status = "evade"
 )
 
 type Client struct {
@@ -24,7 +24,7 @@ type Client struct {
 	ID            string `json:"id"`
 	RoomID        string `json:"roomId"`
 	Username      string `json:"username"`
-	Status        string `json:"status"`
+	Status        status `json:"status"`
 }
 
 type Message struct {

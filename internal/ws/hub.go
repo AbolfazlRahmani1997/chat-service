@@ -103,6 +103,7 @@ func (h *Hub) Run() {
 		case messageId := <-h.ReadAble:
 			{
 				h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
+
 			}
 		case room := <-h.Room:
 			{
@@ -200,10 +201,11 @@ func (h *Hub) Run() {
 						if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
 							if user.UserId != m.ClientID {
 								go func() {
-									user.roomStatuses <- &RoomStatus{
-										RoomId:  m.RoomID,
-										Message: m.Content,
+									user.chanelMessage <- &SystemMessage{
+										EventType: incomeMessage,
+										Content:   messagePop{body: m.Content, roomId: m.RoomID},
 									}
+
 								}()
 
 							}
@@ -236,7 +238,19 @@ func (h *Hub) Manager() {
 	for {
 		select {
 		case user, _ := <-h.Join:
-			h.Users[user.UserId] = user
+			if userExists, ok := h.Users[user.UserId]; ok {
+				userExists.Conn = mergeConnection(userExists.Conn, user.Conn)
+
+			} else {
+
+				user.roomStatuses = make(chan *RoomStatus)
+				user.chanelMessage = make(chan *SystemMessage)
+				go user.WireRooms(h)
+				h.Users[user.UserId] = user
+			}
+			for s, _ := range user.Conn {
+				go user.userConnection(h, s)
+			}
 			go h.OnlineMessage(user.UserId, online)
 		case user, _ := <-h.Left:
 			go h.OnlineMessage(user.UserId, offline)
