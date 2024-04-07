@@ -46,7 +46,6 @@ type User struct {
 
 func (User *User) WireRooms(h *Hub) {
 	defer func() {
-		fmt.Println("sendMessage To ")
 		h.Left <- User
 	}()
 	var wg sync.WaitGroup
@@ -54,8 +53,6 @@ func (User *User) WireRooms(h *Hub) {
 		select {
 		case roomStatuses, ok := <-User.roomStatuses:
 
-			fmt.Println("send message to Room")
-			fmt.Println(roomStatuses.RoomId)
 			if ok {
 				wg.Add(1)
 				go User.writeInAll(&wg)
@@ -88,10 +85,7 @@ func (User *User) writeInAll(wg *sync.WaitGroup) {
 			for s, conn := range User.Conn {
 				err := conn.WriteJSON(sysMessage)
 				if err != nil {
-					fmt.Println(err)
 					delete(User.Conn, s)
-					fmt.Println(len(User.Conn))
-
 				}
 			}
 		}
