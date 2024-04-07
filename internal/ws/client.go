@@ -61,7 +61,8 @@ func (c *Client) writeInAll(m *Message) {
 		if m.connectionId != i {
 			err := conn.WriteJSON(m)
 			if err != nil {
-				fmt.Println(err)
+
+				break
 
 			}
 		}
@@ -69,13 +70,15 @@ func (c *Client) writeInAll(m *Message) {
 	}
 }
 
-func (c *Client) readerMessage(index string) {
+func (c *Client) readerMessage(index string, hub *Hub) {
 	defer func() {
 		c.Conn[index].Close()
 		delete(c.Conn, index)
+		if len(c.Conn) == 0 {
+			hub.Unregister <- c
+		}
 	}()
 	for {
-		fmt.Println("run reader message ", index)
 		_, message, err := c.Conn[index].ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
@@ -99,6 +102,7 @@ func (c *Client) readerMessage(index string) {
 
 func (c *Client) readMessage(hub *Hub) {
 	defer func() {
+		fmt.Println("client is close")
 		hub.Unregister <- c
 	}()
 
