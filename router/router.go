@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
+	"server/internal/admin"
 	"server/internal/ws"
 	"strconv"
 	"time"
@@ -14,7 +15,7 @@ import (
 
 var r *gin.Engine
 
-func InitRouter(wsHandler *ws.Handler) {
+func InitRouter(wsHandler *ws.Handler, adminHandler admin.Handler) {
 	gin.SetMode(gin.ReleaseMode)
 	r = gin.Default()
 
@@ -37,6 +38,30 @@ func InitRouter(wsHandler *ws.Handler) {
 	r.GET("/chat/ws/getRooms/", wsHandler.GetRooms)
 	r.GET("/chat/ws/syncRooms/", wsHandler.SyncRoom)
 	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
+	adminRoute := r.Group("api/admin")
+	adminRoute.GET("/:roomId", adminHandler.FetchRooms)
+	adminRoute.GET("/chat/user", adminHandler.FetchRooms)
+	adminRoute.PUT("/chat/user/:roomId", adminHandler.EditRoom)
+	//r.GET("api/admin/chat/user", func(context *gin.Context) {
+	//	data := context.GetHeader("Authorization")
+	//	s := strings.Split(data, ".")
+	//	type user struct {
+	//		UserId int `json:"user_id"`
+	//	}
+	//	var userTest user
+	//	text := fmt.Sprintf(s[1])
+	//	decodeString, err := base64.URLEncoding.DecodeString(text)
+	//	if err != nil {
+	//	}
+	//	dat := decodeString[:len(decodeString)-1]
+	//	t := string(dat) + "}"
+	//
+	//	err = json.Unmarshal([]byte(t), &userTest)
+	//	if err != nil {
+	//		fmt.Println(err)
+	//	}
+	//	context.JSON(200, userTest)
+	//})
 }
 
 func Start(addr string) error {
