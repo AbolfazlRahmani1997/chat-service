@@ -1,5 +1,10 @@
 package ws
 
+import (
+	"fmt"
+	"strconv"
+)
+
 type RoomService struct {
 	RoomRepository    RoomMongoRepository
 	MemberRepository  UserRepository
@@ -53,6 +58,34 @@ func (receiver RoomService) SyncUser(room Room) Room {
 	room.Members = newMember
 	go receiver.RoomRepository.updateMember(room)
 	return room
+}
+
+type SpecificationRoom struct {
+	Notification bool `json:"Notification,omitempty"`
+	Pin          bool `json:"Pin,omitempty"`
+}
+
+func (receiver RoomService) updateRoomSpecification(id string, userId int, notification SpecificationRoom) {
+	var NewMember []Member
+	fmt.Println(userId)
+	room := receiver.RoomRepository.getById(id)
+	member := room.Members
+	for _, m := range member {
+
+		if m.Id == strconv.Itoa(userId) {
+			fmt.Println("testsss")
+			if notification.Notification != m.Notification {
+				m.Notification = notification.Notification
+			}
+			if notification.Pin != m.Pin {
+				m.Pin = notification.Pin
+			}
+		}
+		NewMember = append(NewMember, m)
+	}
+	room.Members = NewMember
+	receiver.RoomRepository.updateMember(room)
+
 }
 
 func (r RoomService) changeRoomStatus(room Room) {

@@ -24,8 +24,8 @@ func (r RoomMongoRepository) getById(roomId string) Room {
 	filter := bson.M{
 		"id": roomId,
 	}
-	cur, _ := r.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter)
-	err := cur.All(context.TODO(), &room)
+	cur := r.MongoDbRepository.Collection("rooms").FindOne(context.TODO(), filter)
+	err := cur.Decode(&room)
 	if err != nil {
 		return Room{}
 	}

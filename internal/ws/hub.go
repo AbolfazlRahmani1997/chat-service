@@ -8,11 +8,13 @@ import (
 )
 
 type Member struct {
-	Id        string   `json:"Id"`
-	Roles     []string `json:"roles"`
-	FirstName string   `json:"firstname"`
-	LastName  string   `json:"lastname"`
-	AvatarUrl string   `json:"AvatarUrl"bson:"avatar_url"`
+	Id           string   `json:"Id"`
+	Roles        []string `json:"roles"`
+	FirstName    string   `json:"firstname"`
+	LastName     string   `json:"lastname"`
+	AvatarUrl    string   `json:"AvatarUrl"bson:"avatar_url"`
+	Notification bool     `json:"Notification"`
+	Pin          bool     `json:"Pin"`
 }
 
 type ReadMessage struct {
@@ -73,9 +75,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-
-	mqBroker.Consume()
+	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+	//
+	//mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -191,23 +193,31 @@ func (h *Hub) Run() {
 
 				members := h.Rooms[m.RoomID].Members
 				for _, userID := range members {
-					if user, ok := h.Users[userID.Id]; ok {
+					fmt.Println("sendNoif")
+					fmt.Println(userID.Id)
+					fmt.Println(userID.Notification)
+					if userID.Notification != false {
 
-						if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
-							if user.UserId != m.ClientID {
-								go func() {
-									user.pupMessage <- &PupMessage{
-										MessageId: m.ID.Hex(),
-										RoomId:    m.RoomID,
-										Content:   m.Content,
-									}
+						//Check User Onlineto System
+						if user, ok := h.Users[userID.Id]; ok {
 
-								}()
+							if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
+								fmt.Println("offline")
+								if user.UserId != m.ClientID {
+									go func() {
+										user.pupMessage <- &PupMessage{
+											MessageId: m.ID.Hex(),
+											RoomId:    m.RoomID,
+											Content:   m.Content,
+										}
+									}()
 
+								}
 							}
-						}
 
+						}
 					}
+
 				}
 				for _, cl := range h.Rooms[m.RoomID].Clients {
 

@@ -233,6 +233,21 @@ func (Handler *Handler) ReadMessage(c *gin.Context) {
 	client.seenMessage(Handler.hub)
 }
 
+func (Handler *Handler) UpdateRoom(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	user := Handler.getUser(token)
+
+	var spefic SpecificationRoom
+	err := c.BindJSON(&spefic)
+	if err != nil {
+		return
+	}
+	fmt.Println(spefic.Notification)
+	roomId := c.Param("roomId")
+	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
+
+}
+
 type ClientRes struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
