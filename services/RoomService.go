@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"server/Dtos"
 	"server/entity"
 	"server/ports"
@@ -16,7 +17,9 @@ func NewRoomService(RoomRepository ports.RoomRepositoryPort) ports.RoomServicePo
 
 }
 func (receiver RoomService) RetrieveRoom(id string) entity.Room {
+	fmt.Println(id)
 	room := receiver.RoomRepository.GetRoom(id)
+
 	return room
 }
 

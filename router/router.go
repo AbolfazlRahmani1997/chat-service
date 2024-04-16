@@ -39,9 +39,9 @@ func InitRouter(wsHandler *ws.Handler, adminHandler admin.Handler) {
 	r.GET("/chat/ws/syncRooms/", wsHandler.SyncRoom)
 	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
 	adminRoute := r.Group("api/admin")
-	adminRoute.GET("/:roomId", adminHandler.FetchRooms)
-	adminRoute.GET("/chat/user", adminHandler.FetchRooms)
-	adminRoute.PUT("/chat/user/:roomId", adminHandler.EditRoom)
+	adminRoute.GET("/room/:roomId", adminHandler.FindRoom)
+	adminRoute.GET("/room", adminHandler.FetchRooms)
+	adminRoute.PUT("/room/:roomId", adminHandler.EditRoom)
 	//r.GET("api/admin/chat/user", func(context *gin.Context) {
 	//	data := context.GetHeader("Authorization")
 	//	s := strings.Split(data, ".")

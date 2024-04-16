@@ -19,7 +19,6 @@ func NewRoomRepository(Collection *mongo.Client) RoomMongoRepository {
 
 func (receiver RoomMongoRepository) GetRoom(id string) entity.Room {
 	var room entity.Room
-	fmt.Println(id)
 	condition := bson.M{"id": id}
 	find := receiver.Collection.Collection("rooms").FindOne(context.TODO(), condition)
 	err := find.Decode(&room)
@@ -50,7 +49,8 @@ func (receiver RoomMongoRepository) GetAllRooms(filter Dtos.GetAllRoomFilterDto)
 }
 
 func (receiver RoomMongoRepository) Update(Update Dtos.UpdateRoomDto) []entity.Room {
-	result := receiver.Collection.Collection("rooms").FindOneAndUpdate(context.TODO(), bson.M{"roomId": Update.Id}, Update.Room)
+
+	result := receiver.Collection.Collection("rooms").FindOneAndUpdate(context.TODO(), bson.M{"id": Update.Id}, bson.D{{"$set", Update.GetUpdate()}})
 	fmt.Println(result.Err())
 	return nil
 }

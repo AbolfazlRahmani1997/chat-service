@@ -18,11 +18,10 @@ func NewHandler(hub *ws.Hub, roomService ports.RoomServicePort) Handler {
 }
 
 func (receiver Handler) FindRoom(c *gin.Context) {
-	var Request Dtos.GetAllRoomFilterDto
-	err := c.ShouldBindJSON(Request)
-	if err != nil {
-		return
-	}
+
+	roomId := c.Param("roomId")
+	room := receiver.roomService.RetrieveRoom(roomId)
+	c.JSON(200, room)
 
 }
 
@@ -43,7 +42,8 @@ func (receiver Handler) EditRoom(c *gin.Context) {
 
 	err := c.BindJSON(dto)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("z")
+
 		return
 	}
 	dto.Id = c.Param("roomId")
