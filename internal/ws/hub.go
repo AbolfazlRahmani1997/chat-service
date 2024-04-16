@@ -187,22 +187,14 @@ func (h *Hub) Run() {
 					m.Deliver = nil
 					m.Read = nil
 					m.ID = h.MessageService.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
-
 				}
 				h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
 
 				members := h.Rooms[m.RoomID].Members
 				for _, userID := range members {
-					fmt.Println("sendNoif")
-					fmt.Println(userID.Id)
-					fmt.Println(userID.Notification)
 					if userID.Notification != false {
-
-						//Check User Onlineto System
 						if user, ok := h.Users[userID.Id]; ok {
-
 							if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
-								fmt.Println("offline")
 								if user.UserId != m.ClientID {
 									go func() {
 										user.pupMessage <- &PupMessage{
@@ -224,7 +216,6 @@ func (h *Hub) Run() {
 					if ok := cl.Status == online; ok {
 						if cl.ID != m.ClientID {
 							m.Deliver = append(m.Deliver, cl.ID)
-
 							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
 						}
 						cl.Message <- m

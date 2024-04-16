@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -70,6 +71,11 @@ func (c *Client) writeInAll(m *Message) {
 	}
 }
 
+type messageClient struct {
+	Ulid    string `json:"ulid"`
+	Content string `json:"content"`
+}
+
 func (c *Client) readerMessage(index string, hub *Hub) {
 	defer func() {
 		c.Conn[index].Close()
@@ -78,8 +84,11 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 			hub.Unregister <- c
 		}
 	}()
+	var messageDeliverClient messageClient
+
 	for {
 		_, message, err := c.Conn[index].ReadMessage()
+
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
@@ -87,8 +96,14 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 			}
 			break
 		}
+
+		err = json.Unmarshal(message, &messageDeliverClient)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		msg := &Message{
-			Content:      string(message),
+			Content:      messageDeliverClient.Content,
 			connectionId: index,
 			RoomID:       c.RoomID,
 			Username:     c.Username,
@@ -96,6 +111,12 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 		}
 
 		c.ChanelMessage <- msg
+		systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
+		err = c.Conn[index].WriteJSON(systemMessage)
+		if err != nil {
+
+			break
+		}
 
 	}
 }

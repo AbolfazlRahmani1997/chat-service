@@ -16,10 +16,11 @@ type messagePop struct {
 }
 
 const (
-	roomStatus    eventType = "roomStatus"
-	incomeMessage eventType = "incomeMessage"
-	listRooms     eventType = "listRooms"
-	seenMessage   eventType = "seenMessage"
+	roomStatus     eventType = "roomStatus"
+	incomeMessage  eventType = "incomeMessage"
+	listRooms      eventType = "listRooms"
+	seenMessage    eventType = "seenMessage"
+	deliverMessage eventType = "deliverMessage"
 )
 
 type SystemMessage struct {
