@@ -16,10 +16,11 @@ type messagePop struct {
 }
 
 const (
-	roomStatus    eventType = "roomStatus"
-	incomeMessage eventType = "incomeMessage"
-	listRooms     eventType = "listRooms"
-	seenMessage   eventType = "seenMessage"
+	roomStatus     eventType = "roomStatus"
+	incomeMessage  eventType = "incomeMessage"
+	listRooms      eventType = "listRooms"
+	seenMessage    eventType = "seenMessage"
+	deliverMessage eventType = "deliverMessage"
 )
 
 type SystemMessage struct {
@@ -32,6 +33,10 @@ type PupMessage struct {
 	RoomId    string `json:"room_id,omitempty"`
 	Content   string `json:"content"`
 }
+type SeenNotification struct {
+	MessageId string `json:"message_id,omitempty"`
+	RoomId    string `json:"room_id,omitempty"`
+}
 
 type User struct {
 	Conn               map[string]*websocket.Conn
@@ -41,6 +46,7 @@ type User struct {
 	roomStatuses       chan *RoomStatus
 	chanelNotification chan *SystemMessage
 	pupMessage         chan *PupMessage
+	seenMessage        chan *SeenNotification
 	roomList           chan bool
 }
 
@@ -65,6 +71,15 @@ func (User *User) WireRooms(h *Hub) {
 					wg.Add(1)
 					go User.writeInAll(&wg)
 					User.chanelNotification <- &SystemMessage{EventType: incomeMessage, Content: notification}
+					wg.Wait()
+				}
+			}
+		case notification, ok := <-User.seenMessage:
+			{
+				if ok {
+					wg.Add(1)
+					go User.writeInAll(&wg)
+					User.chanelNotification <- &SystemMessage{EventType: seenMessage, Content: notification}
 					wg.Wait()
 				}
 			}
@@ -119,7 +134,6 @@ func (User *User) userConnection(h *Hub, connectionId string) {
 			case listRooms:
 				_, err := strconv.Atoi(item)
 				if err != nil {
-					fmt.Println("err")
 					break
 				}
 				err = User.Conn[connectionId].WriteJSON(SystemMessage{EventType: listRooms, Content: h.RoomService.GetMyRoom(User.UserId, item)})
@@ -142,7 +156,7 @@ func (User *User) userConnection(h *Hub, connectionId string) {
 		if len(message) > 0 {
 			err = json.Unmarshal(message, &messageClient)
 			if err != nil {
-				fmt.Println(err)
+
 				break
 			}
 			eventRequest = messageClient.RequestType

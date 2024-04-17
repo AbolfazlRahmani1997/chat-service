@@ -56,12 +56,12 @@ func (r MongoDBRepository) GetMessageNotDelivery(roomId string, userId string) [
 	opts := options.Find()
 	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, opts)
 	if err != nil {
-		fmt.Println(err)
+
 		return nil
 	}
 	err = cur.All(context.TODO(), &data)
 	if err != nil {
-		fmt.Println(err)
+
 		return data
 	}
 	return data
@@ -72,12 +72,12 @@ func (r MongoDBRepository) GetRoomMessages(roomId string, userId string) []Messa
 	opts := options.Find().SetLimit(1)
 	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, opts)
 	if err != nil {
-		fmt.Println(err)
+
 		return nil
 	}
 	err = cur.All(context.TODO(), &data)
 	if err != nil {
-		fmt.Println(err)
+
 		return data
 	}
 	return data
@@ -87,7 +87,7 @@ func (r MongoDBRepository) GetMessageNotCountDelivery(roomId string, userId stri
 	opts := options.Count().SetHint("_id_")
 	cur, err := r.Collection.Collection("messages").CountDocuments(context.TODO(), condition, opts)
 	if err != nil {
-		fmt.Println(err)
+
 		return 0
 	}
 	return cur
@@ -103,12 +103,10 @@ func (r MongoDBRepository) GetRoomMessage(roomId string, page string) []Message 
 
 	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, opts)
 	if err != nil {
-		fmt.Println(err)
 		return nil
 	}
 	err = cur.All(context.TODO(), &data)
 	if err != nil {
-		fmt.Println(err)
 		return data
 	}
 	return data
@@ -121,15 +119,12 @@ func (r MongoDBRepository) GetAllMessages(roomId string, userId string) []Messag
 	opts := options.Find().SetLimit(10)
 	cur, err := r.Collection.Collection("messages").Find(context.Background(), condition, opts)
 	if err != nil {
-		fmt.Println(err)
 		return nil
 	}
 	err = cur.All(context.TODO(), &data)
 	if err != nil {
-		fmt.Println(err)
 		return data
 	}
-	fmt.Println(data)
 	return data
 }
 
@@ -150,7 +145,6 @@ func (r MongoDBRepository) getRoom(roomId string) Room {
 	data, _ := one.Raw()
 	err := json.Unmarshal([]byte(data.String()), &roomResult)
 	if err != nil {
-		fmt.Println(err)
 		return Room{}
 	}
 	return Room{
@@ -167,7 +161,7 @@ func (r MongoDBRepository) getMessage(messageId string) Message {
 	one := r.Collection.Collection("messages").FindOne(context.Background(), filter)
 	err := one.Decode(&message)
 	if err != nil {
-		fmt.Println(err)
+
 		return Message{}
 	}
 	return message
@@ -213,7 +207,6 @@ func (r MessageRepository) MessageDelivery(id string, clientIds []string) (*mong
 	update := bson.D{{"$set", bson.D{{"Deliver", clientIds}}}}
 	result, err := r.Mongo.Collection.Collection("messages").UpdateOne(context.TODO(), filter, update)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	return result, nil
@@ -225,10 +218,8 @@ func (r MessageRepository) MessageRead(id string, clientIds []string) (*mongo.Up
 	update := bson.D{{"$set", bson.D{{"Read", clientIds}}}}
 	result, err := r.Mongo.Collection.Collection("messages").UpdateOne(context.TODO(), filter, update)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
-	fmt.Println(result.ModifiedCount)
 	return result, err
 }
 
@@ -247,7 +238,6 @@ func (r RedisRepository) GetNotDeliverMessages(number int, key string) []Message
 		if itemMessage != "" {
 			err := json.Unmarshal([]byte(itemMessage), &message)
 			if err != nil {
-				fmt.Println(err)
 				return nil
 			}
 		}
@@ -279,7 +269,6 @@ func (r MessageRepository) getMessageById(id string) Message {
 	one := r.Mongo.Collection.Collection("messages").FindOne(context.Background(), filter)
 	err := one.Decode(&message)
 	if err != nil {
-		fmt.Println(err)
 		return Message{}
 	}
 	return message

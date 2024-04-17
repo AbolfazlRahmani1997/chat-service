@@ -36,14 +36,15 @@ func (receiver MessageService) MessageDelivery(id string, clientIds []string) {
 	}
 }
 
-func (receiver MessageService) MessageRead(id string, clientId string) {
+func (receiver MessageService) MessageRead(id string, clientId string) Message {
 	messages := receiver.MessageRepository.getMessageById(id)
 	clientIds := messages.Read
 	clientIds = append(clientIds, clientId)
 	_, err := receiver.MessageRepository.MessageRead(id, clientIds)
 	if err != nil {
-		return
+		return Message{}
 	}
+	return messages
 
 }
 

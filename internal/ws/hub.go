@@ -8,11 +8,13 @@ import (
 )
 
 type Member struct {
-	Id        string   `json:"Id"`
-	Roles     []string `json:"roles"`
-	FirstName string   `json:"firstname"`
-	LastName  string   `json:"lastname"`
-	AvatarUrl string   `json:"AvatarUrl"bson:"avatar_url"`
+	Id           string   `json:"Id"`
+	Roles        []string `json:"roles"`
+	FirstName    string   `json:"firstname"`
+	LastName     string   `json:"lastname"`
+	AvatarUrl    string   `json:"AvatarUrl"bson:"avatar_url"`
+	Notification bool     `json:"Notification"`
+	Pin          bool     `json:"Pin"`
 }
 
 type ReadMessage struct {
@@ -102,7 +104,12 @@ func (h *Hub) Run() {
 		select {
 		case messageId := <-h.ReadAble:
 			{
-				h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
+				message := h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
+				if user, ok := h.Users[message.ClientID]; ok {
+					go func() {
+						user.seenMessage <- &SeenNotification{MessageId: message.ID.Hex(), RoomId: message.RoomID}
+					}()
+				}
 
 			}
 		case room := <-h.Room:
@@ -155,7 +162,6 @@ func (h *Hub) Run() {
 		case cl := <-h.Unregister:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				if _, ok := h.Rooms[cl.RoomID].Clients[cl.ID]; ok {
-					fmt.Println(cl.Status)
 					close(cl.Message)
 					delete(h.Rooms[cl.RoomID].Clients, cl.ID)
 				}
@@ -185,36 +191,41 @@ func (h *Hub) Run() {
 					m.Deliver = nil
 					m.Read = nil
 					m.ID = h.MessageService.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
-
 				}
 				h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
 
 				members := h.Rooms[m.RoomID].Members
 				for _, userID := range members {
-					if user, ok := h.Users[userID.Id]; ok {
+					fmt.Println(userID.Notification)
+					if userID.Notification != true {
+						if user, ok := h.Users[userID.Id]; ok {
+							fmt.Println("user exist in system")
+							if _, ok := h.Rooms[m.RoomID].Clients[user.UserId]; !ok {
+								fmt.Println("user  not exist in chat")
+								fmt.Println(user.UserId)
+								fmt.Println(m.ClientID)
+								if user.UserId != m.ClientID {
+									fmt.Println("fire income message")
+									go func() {
+										user.pupMessage <- &PupMessage{
+											MessageId: m.ID.Hex(),
+											RoomId:    m.RoomID,
+											Content:   m.Content,
+										}
+									}()
 
-						if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
-							if user.UserId != m.ClientID {
-								go func() {
-									user.pupMessage <- &PupMessage{
-										MessageId: m.ID.Hex(),
-										RoomId:    m.RoomID,
-										Content:   m.Content,
-									}
-
-								}()
-
+								}
 							}
-						}
 
+						}
 					}
+
 				}
 				for _, cl := range h.Rooms[m.RoomID].Clients {
 
 					if ok := cl.Status == online; ok {
 						if cl.ID != m.ClientID {
 							m.Deliver = append(m.Deliver, cl.ID)
-
 							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
 						}
 						cl.Message <- m
@@ -238,10 +249,10 @@ func (h *Hub) Manager() {
 				userExists.Conn = mergeConnection(userExists.Conn, user.Conn)
 
 			} else {
-
 				user.roomStatuses = make(chan *RoomStatus)
 				user.pupMessage = make(chan *PupMessage)
 				user.chanelNotification = make(chan *SystemMessage)
+				user.seenMessage = make(chan *SeenNotification)
 				go user.WireRooms(h)
 				h.Users[user.UserId] = user
 			}

@@ -190,11 +190,11 @@ func (Handler *Handler) GetRooms(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		fmt.Println(err)
+
 	}
 	err = conn.WriteJSON(room)
 	if err != nil {
-		fmt.Println(err)
+
 		return
 	}
 	var connectionPool map[string]*websocket.Conn
@@ -231,6 +231,20 @@ func (Handler *Handler) ReadMessage(c *gin.Context) {
 	client := clients[userId]
 	client.ReadMessage = conn
 	client.seenMessage(Handler.hub)
+}
+
+func (Handler *Handler) UpdateRoom(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	user := Handler.getUser(token)
+
+	var spefic SpecificationRoom
+	err := c.BindJSON(&spefic)
+	if err != nil {
+		return
+	}
+	roomId := c.Param("roomId")
+	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
+
 }
 
 type ClientRes struct {
@@ -326,20 +340,17 @@ func (Handler *Handler) getUser(token string) UserRequest {
 	request, err := http.NewRequest("GET", gateway, nil)
 	request.Header.Set("Authorization", token)
 	if err != nil {
-		fmt.Println(err)
 		return user
 	}
 	res, err := client.Do(request)
 
-	fmt.Println(res.StatusCode)
 	if err != nil {
-		fmt.Println(err)
+
 	}
 
 	body, _ := ioutil.ReadAll(res.Body)
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		fmt.Println(err)
 	}
 	Handler.UserHandler[token] = user
 	Handler.UpdateUser(UserDto{UserId: strconv.Itoa(user.Id), UserName: user.UserName, FirstName: user.FirstName, LastName: user.LastName, AvatarUrl: user.Avatar})
