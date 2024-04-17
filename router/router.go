@@ -61,15 +61,13 @@ func Auth(handler ws.Handler) gin.HandlerFunc {
 		request, err := http.NewRequest("GET", getwayUrl, nil)
 		request.Header.Set("Authorization", c.GetHeader("Authorization"))
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 		res, err := client.Do(request)
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println("sendRequest")
-		fmt.Println(res.Body)
+
 		body, _ := ioutil.ReadAll(res.Body)
 		derr := json.Unmarshal(body, &user)
 

@@ -73,7 +73,6 @@ func (receiver RoomService) updateRoomSpecification(id string, userId int, notif
 	for _, m := range member {
 
 		if m.Id == strconv.Itoa(userId) {
-			fmt.Println("testsss")
 			if notification.Notification != m.Notification {
 				m.Notification = notification.Notification
 			}

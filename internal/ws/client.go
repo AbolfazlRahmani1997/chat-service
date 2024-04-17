@@ -78,9 +78,14 @@ type messageClient struct {
 
 func (c *Client) readerMessage(index string, hub *Hub) {
 	defer func() {
-		c.Conn[index].Close()
+		err := c.Conn[index].Close()
+		if err != nil {
+			return
+		}
 		delete(c.Conn, index)
+		fmt.Println("closed \t" + index)
 		if len(c.Conn) == 0 {
+			fmt.Println("Unregister \t" + index)
 			hub.Unregister <- c
 		}
 	}()
@@ -92,7 +97,6 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
-
 			}
 			break
 		}
@@ -123,7 +127,6 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 
 func (c *Client) readMessage(hub *Hub) {
 	defer func() {
-		fmt.Println("client is close")
 		hub.Unregister <- c
 	}()
 

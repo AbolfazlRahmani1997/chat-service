@@ -75,9 +75,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-	//
-	//mqBroker.Consume()
+	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+
+	mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -104,7 +104,12 @@ func (h *Hub) Run() {
 		select {
 		case messageId := <-h.ReadAble:
 			{
-				h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
+				message := h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
+				if user, ok := h.Users[message.ClientID]; ok {
+					go func() {
+						user.seenMessage <- &SeenNotification{MessageId: message.ID.Hex(), RoomId: message.RoomID}
+					}()
+				}
 
 			}
 		case room := <-h.Room:
@@ -157,7 +162,6 @@ func (h *Hub) Run() {
 		case cl := <-h.Unregister:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				if _, ok := h.Rooms[cl.RoomID].Clients[cl.ID]; ok {
-					fmt.Println(cl.Status)
 					close(cl.Message)
 					delete(h.Rooms[cl.RoomID].Clients, cl.ID)
 				}
@@ -192,10 +196,16 @@ func (h *Hub) Run() {
 
 				members := h.Rooms[m.RoomID].Members
 				for _, userID := range members {
-					if userID.Notification != false {
+					fmt.Println(userID.Notification)
+					if userID.Notification != true {
 						if user, ok := h.Users[userID.Id]; ok {
-							if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
+							fmt.Println("user exist in system")
+							if _, ok := h.Rooms[m.RoomID].Clients[user.UserId]; !ok {
+								fmt.Println("user  not exist in chat")
+								fmt.Println(user.UserId)
+								fmt.Println(m.ClientID)
 								if user.UserId != m.ClientID {
+									fmt.Println("fire income message")
 									go func() {
 										user.pupMessage <- &PupMessage{
 											MessageId: m.ID.Hex(),
@@ -239,10 +249,10 @@ func (h *Hub) Manager() {
 				userExists.Conn = mergeConnection(userExists.Conn, user.Conn)
 
 			} else {
-
 				user.roomStatuses = make(chan *RoomStatus)
 				user.pupMessage = make(chan *PupMessage)
 				user.chanelNotification = make(chan *SystemMessage)
+				user.seenMessage = make(chan *SeenNotification)
 				go user.WireRooms(h)
 				h.Users[user.UserId] = user
 			}
