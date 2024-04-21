@@ -29,13 +29,13 @@ type Client struct {
 }
 
 type Message struct {
-	ID           primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
-	Content      string             `json:"Content,omitempty"  bson:"content"`
-	RoomID       string             `json:"RoomID,omitempty"  bson:"roomID"`
-	Username     string             `json:"Username,omitempty" bson:"username" `
-	ClientID     string             `json:"ClientID,omitempty" bson:"clientID"`
-	Deliver      []string           `json:"Deliver,omitempty" bson:"Deliver"`
-	Read         []string           `json:"Read,omitempty" bson:"Read"`
+	ID           primitive.ObjectID `json:"_id" bson:"_id"`
+	Content      string             `json:"Content"  bson:"content"`
+	RoomID       string             `json:"RoomID"  bson:"roomID"`
+	Username     string             `json:"Username" bson:"username" `
+	ClientID     string             `json:"ClientID" bson:"clientID"`
+	Deliver      []string           `json:"Deliver" bson:"Deliver"`
+	Read         []string           `json:"Read" bson:"Read"`
 	connectionId string
 	CreatedAt    time.Time `json:"CreatedAt"bson:"created_at"`
 	UpdatedAt    time.Time `bson:"updated_at"`
