@@ -76,7 +76,7 @@ func (receiver RoomService) updateRoomSpecification(id string, userId int, notif
 			if notification.Notification == true {
 				m.Notification = !m.Notification
 			}
-			if notification.Pin != true {
+			if notification.Pin == true {
 				m.Pin = !m.Pin
 			}
 		}
