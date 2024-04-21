@@ -3,13 +3,11 @@ package router
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
 	"server/internal/ws"
 	"strconv"
-	"time"
 )
 
 var r *gin.Engine
@@ -18,17 +16,17 @@ func InitRouter(wsHandler *ws.Handler) {
 	gin.SetMode(gin.ReleaseMode)
 	r = gin.Default()
 
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST"},
-		AllowHeaders:     []string{"Content-Type"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		AllowOriginFunc: func(origin string) bool {
-			return origin == "*"
-		},
-		MaxAge: 12 * time.Hour,
-	}))
+	//r.Use(cors.New(cors.Config{
+	//	AllowOrigins:     []string{"*"},
+	//	AllowMethods:     []string{"GET", "POST"},
+	//	AllowHeaders:     []string{"Content-Type"},
+	//	ExposeHeaders:    []string{"Content-Length"},
+	//	AllowCredentials: true,
+	//	AllowOriginFunc: func(origin string) bool {
+	//		return origin == "*"
+	//	},
+	//	MaxAge: 12 * time.Hour,
+	//}))
 	//r.Use(Auth(*wsHandler))
 	//todo:create from rabbitmq
 	r.POST("/chat/ws/createRoom", wsHandler.CreateRoom)
