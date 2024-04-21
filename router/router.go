@@ -3,11 +3,13 @@ package router
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
 	"server/internal/ws"
 	"strconv"
+	"time"
 )
 
 var r *gin.Engine
@@ -16,17 +18,17 @@ func InitRouter(wsHandler *ws.Handler) {
 	gin.SetMode(gin.ReleaseMode)
 	r = gin.Default()
 
-	//r.Use(cors.New(cors.Config{
-	//	AllowOrigins:     []string{"*"},
-	//	AllowMethods:     []string{"GET", "POST"},
-	//	AllowHeaders:     []string{"Content-Type"},
-	//	ExposeHeaders:    []string{"Content-Length"},
-	//	AllowCredentials: true,
-	//	AllowOriginFunc: func(origin string) bool {
-	//		return origin == "*"
-	//	},
-	//	MaxAge: 12 * time.Hour,
-	//}))
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST"},
+		AllowHeaders:     []string{"Content-Type"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		AllowOriginFunc: func(origin string) bool {
+			return origin == "*"
+		},
+		MaxAge: 12 * time.Hour,
+	}))
 	//r.Use(Auth(*wsHandler))
 	//todo:create from rabbitmq
 	r.POST("/chat/ws/createRoom", wsHandler.CreateRoom)
@@ -35,7 +37,9 @@ func InitRouter(wsHandler *ws.Handler) {
 	r.GET("/chat/ws/getRooms/", wsHandler.GetRooms)
 	r.GET("/chat/ws/syncRooms/", wsHandler.SyncRoom)
 	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
-	r.POST("/chat/updateRoom/:roomId", wsHandler.UpdateRoom)
+	r.GET("/chat/updateRoom/:roomId", wsHandler.UpdateRoom)
+	r.GET("/chat/room/pin/:roomId", wsHandler.UpdatePin)
+	r.GET("/chat/room/notification/:roomId", wsHandler.UpdateNotification)
 }
 
 func Start(addr string) error {

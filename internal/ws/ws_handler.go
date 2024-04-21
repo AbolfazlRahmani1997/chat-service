@@ -241,6 +241,26 @@ func (Handler *Handler) UpdateRoom(c *gin.Context) {
 	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
 
 }
+func (Handler *Handler) UpdatePin(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	user := Handler.getUser(token)
+
+	var spefic SpecificationRoom
+	spefic.Pin = true
+	roomId := c.Param("roomId")
+	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
+
+}
+func (Handler *Handler) UpdateNotification(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	user := Handler.getUser(token)
+
+	var spefic SpecificationRoom
+	spefic.Notification = true
+	roomId := c.Param("roomId")
+	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
+
+}
 
 type ClientRes struct {
 	ID       string `json:"id"`

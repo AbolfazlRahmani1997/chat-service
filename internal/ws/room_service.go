@@ -73,11 +73,11 @@ func (receiver RoomService) updateRoomSpecification(id string, userId int, notif
 	for _, m := range member {
 
 		if m.Id == strconv.Itoa(userId) {
-			if notification.Notification != m.Notification {
-				m.Notification = notification.Notification
+			if notification.Notification == true {
+				m.Notification = !m.Notification
 			}
-			if notification.Pin != m.Pin {
-				m.Pin = notification.Pin
+			if notification.Pin != true {
+				m.Pin = !m.Pin
 			}
 		}
 		NewMember = append(NewMember, m)
