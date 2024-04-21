@@ -244,11 +244,11 @@ func (Handler *Handler) UpdateRoom(c *gin.Context) {
 func (Handler *Handler) UpdatePin(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	user := Handler.getUser(token)
-
 	var spefic SpecificationRoom
 	spefic.Pin = true
 	roomId := c.Param("roomId")
 	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
+	c.JSON(200, spefic)
 
 }
 func (Handler *Handler) UpdateNotification(c *gin.Context) {
@@ -259,7 +259,7 @@ func (Handler *Handler) UpdateNotification(c *gin.Context) {
 	spefic.Notification = true
 	roomId := c.Param("roomId")
 	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
-
+	c.JSON(200, spefic)
 }
 
 type ClientRes struct {
@@ -366,6 +366,7 @@ func (Handler *Handler) getUser(token string) UserRequest {
 	body, _ := ioutil.ReadAll(res.Body)
 	err = json.Unmarshal(body, &user)
 	if err != nil {
+
 	}
 	Handler.UserHandler[token] = user
 	Handler.UpdateUser(UserDto{UserId: strconv.Itoa(user.Id), UserName: user.UserName, FirstName: user.FirstName, LastName: user.LastName, AvatarUrl: user.Avatar})
