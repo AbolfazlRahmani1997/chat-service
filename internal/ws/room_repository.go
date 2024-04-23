@@ -7,7 +7,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
-	"strconv"
 	"time"
 )
 
@@ -33,23 +32,91 @@ func (r RoomMongoRepository) getById(roomId string) Room {
 	return room
 }
 
-func (r *RoomMongoRepository) GetMyRooms(userId string, page string) []Room {
-	var rooms []Room
-	filter := bson.M{
-		"members.id": userId,
-	}
-	limit, _ := strconv.Atoi(page)
-	l := int64(10)
-	skip := int64(limit*10 - 10)
-	findOptions := options.FindOptions{Skip: &skip, Limit: &l}
-	opts := findOptions.SetSort(bson.D{{"last_message.created_at", -1}})
+func (r *RoomMongoRepository) GetMyRooms(userId string, page int, offset int) []Room {
 
-	cur, err := r.MongoDbRepository.Collection("rooms").Find(context.TODO(), filter, opts)
+	notPinedRoom := []bson.M{
+
+		bson.M{
+			"$match": bson.M{
+				"members": bson.M{
+					"$elemMatch": bson.M{
+						"id":  userId,
+						"pin": false,
+					},
+				},
+			},
+		},
+
+		bson.M{
+			"$sort": bson.M{
+				"last_message.created_at": -1,
+			},
+		},
+	}
+
+	var rooms []Room
+	//limit, _ := strconv.Atoi(page)
+	l := offset
+	skip := int64((page * offset) - offset)
+
+	//pinnedRoomsQuery := bson.M{"members": bson.M{"$elemMatch": bson.M{"id": userId, "pin": true}}}
+	//matchStage := bson.D{{"$match", pinnedRoomsQuery}}
+	//sortStage := bson.D{{"$sort", bson.D{{"members.pin", 1}, {"last_message.created_at", -1}}}}
+	skipStage := bson.M{"$skip": skip}
+	limitStage := bson.M{"$limit": l}
+	notPinedRoom = append(notPinedRoom, skipStage)
+	notPinedRoom = append(notPinedRoom, limitStage)
+	cur, err := r.MongoDbRepository.Collection("rooms").Aggregate(context.TODO(), notPinedRoom)
+
+	if err != nil {
+		fmt.Println(err)
+		return rooms
+	}
+
 	err = cur.All(context.TODO(), &rooms)
 	if err != nil {
 		fmt.Println(err)
 		return rooms
 	}
+	return rooms
+}
+func (r *RoomMongoRepository) GetMyPinRooms(userId string) []Room {
+	var rooms []Room
+	getPinedMessage := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"members": bson.M{
+					"$elemMatch": bson.M{
+						"id":  userId,
+						"pin": true,
+					},
+				},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{
+				"last_message.created_at": -1,
+			},
+		},
+	}
+	limitStage := bson.M{"$limit": 5}
+
+	getPinedMessage = append(getPinedMessage, limitStage)
+
+	cur, err := r.MongoDbRepository.Collection("rooms").Aggregate(context.TODO(), getPinedMessage)
+	fmt.Println(cur)
+	if err != nil {
+		fmt.Println(err)
+		return rooms
+	}
+
+	err = cur.All(context.TODO(), &rooms)
+
+	if err != nil {
+		fmt.Println(err)
+		return rooms
+	}
+	fmt.Println(rooms)
 	return rooms
 }
 func (r *RoomMongoRepository) GetOlineMyRooms(userId string) []Room {

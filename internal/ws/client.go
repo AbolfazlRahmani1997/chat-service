@@ -31,6 +31,7 @@ type Client struct {
 type Message struct {
 	ID           primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	Content      string             `json:"Content,omitempty"  bson:"content"`
+	UniqId       string             `json:"UniqId"`
 	RoomID       string             `json:"RoomID,omitempty"  bson:"roomID"`
 	Username     string             `json:"Username,omitempty" bson:"username" `
 	ClientID     string             `json:"ClientID,omitempty" bson:"clientID"`
@@ -106,20 +107,24 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 			fmt.Println(err)
 			return
 		}
-		msg := &Message{
-			Content:      messageDeliverClient.Content,
-			connectionId: index,
-			RoomID:       c.RoomID,
-			Username:     c.Username,
-			ClientID:     c.ID,
-		}
+		if messageDeliverClient.Ulid != "ping" {
+			fmt.Println(messageDeliverClient.Ulid)
+			msg := &Message{
+				Content:      messageDeliverClient.Content,
+				UniqId:       messageDeliverClient.Ulid,
+				connectionId: index,
+				RoomID:       c.RoomID,
+				Username:     c.Username,
+				ClientID:     c.ID,
+			}
+			c.ChanelMessage <- msg
+			systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
 
-		c.ChanelMessage <- msg
-		systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
-		err = c.Conn[index].WriteJSON(systemMessage)
-		if err != nil {
+			err = c.Conn[index].WriteJSON(systemMessage)
+			if err != nil {
 
-			break
+				break
+			}
 		}
 
 	}

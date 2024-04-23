@@ -47,6 +47,18 @@ type Room struct {
 	Message   Message            `json:"message" bson:"last_message"`
 	Status    status             `json:"status,omitempty" `
 	Clients   map[string]*Client `json:"clients"`
+	Pinned    bool               `json:"pinned" bson:"pinned"`
+}
+
+type RoomTemp struct {
+	_Id       primitive.ObjectID `json:"_id"`
+	ID        string             `json:"Id" `
+	Name      string             `json:"name" `
+	Temporary bool               `json:"type" `
+	Members   Member             `json:"members"`
+	Message   Message            `json:"message" bson:"last_message"`
+	Status    status             `json:"status,omitempty" `
+	Clients   map[string]*Client `json:"clients"`
 }
 
 type Hub struct {
@@ -75,9 +87,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-
-	mqBroker.Consume()
+	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+	//
+	//mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -114,12 +126,12 @@ func (h *Hub) Run() {
 			}
 		case room := <-h.Room:
 			{
-				h.Rooms[room.ID] = &Room{
-					_Id:     room._Id,
-					ID:      room.ID,
-					Name:    room.Name,
-					Members: room.Members,
-					Clients: make(map[string]*Client),
+				for _, member := range room.Members {
+					if user, ok := h.Users[member.Id]; ok {
+						go func() {
+							user.createRoom <- room
+						}()
+					}
 				}
 
 			}
@@ -252,6 +264,7 @@ func (h *Hub) Manager() {
 				user.roomStatuses = make(chan *RoomStatus)
 				user.pupMessage = make(chan *PupMessage)
 				user.chanelNotification = make(chan *SystemMessage)
+				user.createRoom = make(chan *Room)
 				user.seenMessage = make(chan *SeenNotification)
 				go user.WireRooms(h)
 				h.Users[user.UserId] = user
@@ -261,7 +274,14 @@ func (h *Hub) Manager() {
 			}
 			go h.OnlineMessage(user.UserId, online)
 		case user, _ := <-h.Left:
+
 			go h.OnlineMessage(user.UserId, offline)
+			if len(user.Conn) == 0 {
+				close(user.createRoom)
+				close(user.chanelNotification)
+				close(user.pupMessage)
+				close(user.roomStatuses)
+			}
 			delete(h.Users, user.UserId)
 		case user, _ := <-h.Evade:
 			go h.OnlineMessage(user.UserId, evade)

@@ -21,6 +21,7 @@ const (
 	listRooms      eventType = "listRooms"
 	seenMessage    eventType = "seenMessage"
 	deliverMessage eventType = "deliverMessage"
+	createNewRoom  eventType = "createNewRoom"
 )
 
 type SystemMessage struct {
@@ -44,6 +45,7 @@ type User struct {
 	online             bool
 	UserId             string `json:"UserId"`
 	roomStatuses       chan *RoomStatus
+	createRoom         chan *Room
 	chanelNotification chan *SystemMessage
 	pupMessage         chan *PupMessage
 	seenMessage        chan *SeenNotification
@@ -52,7 +54,7 @@ type User struct {
 
 func (User *User) WireRooms(h *Hub) {
 	defer func() {
-		h.Left <- User
+
 	}()
 	var wg sync.WaitGroup
 	for {
@@ -63,6 +65,14 @@ func (User *User) WireRooms(h *Hub) {
 				wg.Add(1)
 				go User.writeInAll(&wg)
 				User.chanelNotification <- &SystemMessage{EventType: roomStatus, Content: roomStatuses}
+				wg.Wait()
+			}
+		case roomStatuses, ok := <-User.createRoom:
+
+			if ok {
+				wg.Add(1)
+				go User.writeInAll(&wg)
+				User.chanelNotification <- &SystemMessage{EventType: createNewRoom, Content: roomStatuses}
 				wg.Wait()
 			}
 		case notification, ok := <-User.pupMessage:
@@ -117,11 +127,10 @@ func (User *User) userConnection(h *Hub, connectionId string) {
 	defer func() {
 
 		User.Conn[connectionId].Close()
-		delete(User.Conn, connectionId)
-
-		if len(User.Conn) == 0 {
+		if len(User.Conn) < 1 {
 			h.Left <- User
 		}
+		delete(User.Conn, connectionId)
 
 	}()
 	var messageClient MessageReceive

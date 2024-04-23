@@ -48,11 +48,13 @@ func (receiver *RabbitMqBroker) Consume() {
 			if err != nil {
 				fmt.Println(err)
 			}
-			receiver.MongoRepository.insertRoomInDb(Room{
+			room := Room{
 				ID:      RoomRequest.Id,
 				Name:    RoomRequest.Name,
 				Members: RoomRequest.Member,
-			})
+			}
+			receiver.MongoRepository.insertRoomInDb(room)
+			receiver.Room <- &room
 
 		}
 		wg.Wait()

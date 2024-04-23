@@ -231,7 +231,6 @@ func (Handler *Handler) ReadMessage(c *gin.Context) {
 func (Handler *Handler) UpdateRoom(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	user := Handler.getUser(token)
-
 	var spefic SpecificationRoom
 	err := c.BindJSON(&spefic)
 	if err != nil {
@@ -247,7 +246,7 @@ func (Handler *Handler) UpdatePin(c *gin.Context) {
 	var spefic SpecificationRoom
 	spefic.Pin = true
 	roomId := c.Param("roomId")
-	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
+	spefic = Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
 	c.JSON(200, spefic)
 
 }
@@ -258,7 +257,7 @@ func (Handler *Handler) UpdateNotification(c *gin.Context) {
 	var spefic SpecificationRoom
 	spefic.Notification = true
 	roomId := c.Param("roomId")
-	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
+	spefic = Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
 	c.JSON(200, spefic)
 }
 

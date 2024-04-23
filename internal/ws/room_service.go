@@ -21,9 +21,17 @@ type RoomResponse struct {
 }
 
 func (r RoomService) GetMyRoom(userId string, page string) []RoomResponse {
-
 	var Rooms []RoomResponse
-	room := r.RoomRepository.GetMyRooms(userId, page)
+
+	pageA, _ := strconv.Atoi(page)
+	room := r.RoomRepository.GetMyPinRooms(userId)
+	if (len(room) < 5) && pageA == 1 {
+		roomList := r.RoomRepository.GetMyRooms(userId, pageA, 10-len(room))
+		room = append(room, roomList...)
+	} else {
+		room = r.RoomRepository.GetMyRooms(userId, pageA, 10-len(room))
+	}
+	fmt.Println(len(room))
 	for _, room := range room {
 		roomSync := r.SyncUser(room)
 		notDelivered := r.MessageRepository.Mongo.GetMessageNotCountDelivery(room.ID, userId)
@@ -61,30 +69,35 @@ func (receiver RoomService) SyncUser(room Room) Room {
 }
 
 type SpecificationRoom struct {
-	Notification bool `json:"Notification,omitempty"`
-	Pin          bool `json:"Pin,omitempty"`
+	Notification bool `json:"Notification"`
+	Pin          bool `json:"Pin"`
 }
 
-func (receiver RoomService) updateRoomSpecification(id string, userId int, notification SpecificationRoom) {
+func (receiver RoomService) updateRoomSpecification(id string, userId int, notification SpecificationRoom) SpecificationRoom {
 	var NewMember []Member
 	fmt.Println(userId)
 	room := receiver.RoomRepository.getById(id)
 	member := room.Members
+	var LastStatus SpecificationRoom
 	for _, m := range member {
 
 		if m.Id == strconv.Itoa(userId) {
 			if notification.Notification == true {
 				m.Notification = !m.Notification
+				LastStatus.Notification = m.Notification
 			}
 			if notification.Pin == true {
 				m.Pin = !m.Pin
+				LastStatus.Pin = m.Pin
 			}
+
 		}
 		NewMember = append(NewMember, m)
 	}
+
 	room.Members = NewMember
 	receiver.RoomRepository.updateMember(room)
-
+	return LastStatus
 }
 
 func (r RoomService) changeRoomStatus(room Room) {
