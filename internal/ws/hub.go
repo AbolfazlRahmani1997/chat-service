@@ -126,6 +126,13 @@ func (h *Hub) Run() {
 			}
 		case room := <-h.Room:
 			{
+				h.Rooms[room.ID] = &Room{
+					_Id:     room._Id,
+					ID:      room.ID,
+					Name:    room.Name,
+					Members: room.Members,
+					Clients: make(map[string]*Client),
+				}
 				for _, member := range room.Members {
 					if user, ok := h.Users[member.Id]; ok {
 						go func() {

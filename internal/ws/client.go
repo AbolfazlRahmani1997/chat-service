@@ -91,7 +91,6 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 		}
 	}()
 	var messageDeliverClient messageClient
-
 	for {
 		_, message, err := c.Conn[index].ReadMessage()
 
@@ -108,7 +107,6 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 			return
 		}
 		if messageDeliverClient.Ulid != "ping" {
-			fmt.Println(messageDeliverClient.Ulid)
 			msg := &Message{
 				Content:      messageDeliverClient.Content,
 				UniqId:       messageDeliverClient.Ulid,
@@ -119,12 +117,24 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 			}
 			c.ChanelMessage <- msg
 			systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
-
 			err = c.Conn[index].WriteJSON(systemMessage)
-			if err != nil {
 
-				break
+		} else {
+			msg := &Message{
+				Content:      messageDeliverClient.Content,
+				UniqId:       messageDeliverClient.Ulid,
+				connectionId: index,
+				RoomID:       c.RoomID,
+				Username:     c.Username,
+				ClientID:     c.ID,
 			}
+			c.ChanelMessage <- msg
+			systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
+			err = c.Conn[index].WriteJSON(systemMessage)
+		}
+		if err != nil {
+
+			break
 		}
 
 	}
@@ -140,7 +150,6 @@ func (c *Client) readMessage(hub *Hub) {
 		if !ok {
 			break
 		}
-
 		hub.Broadcast <- m
 	}
 }
