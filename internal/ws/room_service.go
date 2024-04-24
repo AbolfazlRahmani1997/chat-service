@@ -73,7 +73,7 @@ type SpecificationRoom struct {
 	Pin          bool `json:"Pin"`
 }
 
-func (receiver RoomService) updateRoomSpecification(id string, userId int, notification SpecificationRoom) SpecificationRoom {
+func (receiver RoomService) updateRoomSpecification(id string, userId string, notification SpecificationRoom) []Member {
 	var NewMember []Member
 	fmt.Println(userId)
 	room := receiver.RoomRepository.getById(id)
@@ -81,7 +81,7 @@ func (receiver RoomService) updateRoomSpecification(id string, userId int, notif
 	var LastStatus SpecificationRoom
 	for _, m := range member {
 
-		if m.Id == strconv.Itoa(userId) {
+		if m.Id == userId {
 			if notification.Notification == true {
 				m.Notification = !m.Notification
 				LastStatus.Notification = m.Notification
@@ -97,7 +97,7 @@ func (receiver RoomService) updateRoomSpecification(id string, userId int, notif
 
 	room.Members = NewMember
 	receiver.RoomRepository.updateMember(room)
-	return LastStatus
+	return NewMember
 }
 
 func (r RoomService) changeRoomStatus(room Room) {

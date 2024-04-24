@@ -38,7 +38,6 @@ func InitRouter(wsHandler *ws.Handler) {
 	r.GET("/chat/ws/getRooms/", wsHandler.GetRooms)
 	r.GET("/chat/ws/syncRooms/", wsHandler.SyncRoom)
 	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
-	r.GET("/chat/updateRoom/:roomId", wsHandler.UpdateRoom)
 	r.GET("/chat/room/pin/:roomId", wsHandler.UpdatePin)
 	r.GET("/chat/room/notification/:roomId", wsHandler.UpdateNotification)
 }

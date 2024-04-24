@@ -224,27 +224,25 @@ func (h *Hub) Run() {
 				members := h.Rooms[m.RoomID].Members
 				for _, userID := range members {
 					fmt.Println(userID.Notification)
-					if userID.Notification != true {
-						if user, ok := h.Users[userID.Id]; ok {
-							fmt.Println("user exist in system")
-							if _, ok := h.Rooms[m.RoomID].Clients[user.UserId]; !ok {
-								fmt.Println("user  not exist in chat")
-								fmt.Println(user.UserId)
-								fmt.Println(m.ClientID)
-								if user.UserId != m.ClientID {
-									fmt.Println("fire income message")
-									go func() {
-										user.pupMessage <- &PupMessage{
-											MessageId: m.ID.Hex(),
-											RoomId:    m.RoomID,
-											Content:   m.Content,
-										}
-									}()
+					if user, ok := h.Users[userID.Id]; ok {
+						fmt.Println("user exist in system")
+						if _, ok := h.Rooms[m.RoomID].Clients[user.UserId]; !ok {
+							fmt.Println("user  not exist in chat")
+							fmt.Println(user.UserId)
+							fmt.Println(m.ClientID)
+							if user.UserId != m.ClientID {
+								fmt.Println("fire income message")
+								go func() {
+									user.pupMessage <- &PupMessage{
+										MessageId: m.ID.Hex(),
+										RoomId:    m.RoomID,
+										Content:   m.Content,
+									}
+								}()
 
-								}
 							}
-
 						}
+
 					}
 
 				}

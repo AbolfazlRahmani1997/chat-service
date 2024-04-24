@@ -228,25 +228,23 @@ func (Handler *Handler) ReadMessage(c *gin.Context) {
 	client.seenMessage(Handler.hub)
 }
 
-func (Handler *Handler) UpdateRoom(c *gin.Context) {
-	token := c.GetHeader("Authorization")
-	user := Handler.getUser(token)
-	var spefic SpecificationRoom
-	err := c.BindJSON(&spefic)
-	if err != nil {
-		return
-	}
-	roomId := c.Param("roomId")
-	Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
-
-}
 func (Handler *Handler) UpdatePin(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	user := Handler.getUser(token)
 	var spefic SpecificationRoom
 	spefic.Pin = true
 	roomId := c.Param("roomId")
-	spefic = Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
+	userId := strconv.Itoa(user.Id)
+	newMember := Handler.hub.RoomService.updateRoomSpecification(roomId, userId, spefic)
+	if _, ok := Handler.hub.Rooms[roomId]; ok {
+		Handler.hub.Rooms[roomId].Members = newMember
+	}
+	for _, member := range newMember {
+		if member.Id == userId {
+			spefic.Pin = member.Pin
+			spefic.Notification = member.Notification
+		}
+	}
 	c.JSON(200, spefic)
 
 }
@@ -257,7 +255,18 @@ func (Handler *Handler) UpdateNotification(c *gin.Context) {
 	var spefic SpecificationRoom
 	spefic.Notification = true
 	roomId := c.Param("roomId")
-	spefic = Handler.hub.RoomService.updateRoomSpecification(roomId, user.Id, spefic)
+	userId := strconv.Itoa(user.Id)
+	newMember := Handler.hub.RoomService.updateRoomSpecification(roomId, userId, spefic)
+	if _, ok := Handler.hub.Rooms[roomId]; ok {
+		Handler.hub.Rooms[roomId].Members = newMember
+	}
+
+	for _, member := range newMember {
+		if member.Id == userId {
+			spefic.Pin = member.Pin
+			spefic.Notification = member.Notification
+		}
+	}
 	c.JSON(200, spefic)
 }
 
