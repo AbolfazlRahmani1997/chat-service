@@ -120,15 +120,6 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 			err = c.Conn[index].WriteJSON(systemMessage)
 
 		} else {
-			msg := &Message{
-				Content:      messageDeliverClient.Content,
-				UniqId:       messageDeliverClient.Ulid,
-				connectionId: index,
-				RoomID:       c.RoomID,
-				Username:     c.Username,
-				ClientID:     c.ID,
-			}
-			c.ChanelMessage <- msg
 			systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
 			err = c.Conn[index].WriteJSON(systemMessage)
 		}
