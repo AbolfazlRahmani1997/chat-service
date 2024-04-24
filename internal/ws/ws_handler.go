@@ -235,6 +235,7 @@ func (Handler *Handler) UpdatePin(c *gin.Context) {
 	spefic.Pin = true
 	roomId := c.Param("roomId")
 	userId := strconv.Itoa(user.Id)
+
 	newMember := Handler.hub.RoomService.updateRoomSpecification(roomId, userId, spefic)
 	if _, ok := Handler.hub.Rooms[roomId]; ok {
 		Handler.hub.Rooms[roomId].Members = newMember
