@@ -148,12 +148,12 @@ func (r MongoDBRepository) getRoom(roomId string) Room {
 		return Room{}
 	}
 	return Room{
-		_Id:       roomResult.ID,
-		ID:        roomId,
-		Name:      roomResult.Name,
-		Temporary: roomResult.Temporary,
-		Status:    roomResult.Status,
-		Members:   roomResult.Members}
+		_Id:     roomResult.ID,
+		ID:      roomId,
+		Name:    roomResult.Name,
+		Type:    roomResult.Type,
+		Status:  roomResult.Status,
+		Members: roomResult.Members}
 }
 func (r MongoDBRepository) getMessage(messageId string) Message {
 	var message Message

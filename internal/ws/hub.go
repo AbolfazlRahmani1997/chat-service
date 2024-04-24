@@ -29,25 +29,33 @@ type RoomStatus struct {
 }
 
 type RoomModel struct {
-	ID        primitive.ObjectID `json:"_id"`
-	RoomId    string             `json:"id"`
-	Name      string             `json:"name" `
-	Temporary bool               `json:"type" `
-	Members   []Member           `json:"members"`
-	Message   Message            `json:"message" bson:"last_message"`
-	Status    status             `json:"status" `
-	Clients   map[string]*Client `json:"clients"`
+	ID      primitive.ObjectID `json:"_id"`
+	RoomId  string             `json:"id"`
+	Name    string             `json:"name" `
+	Type    Type               `json:"type" `
+	Members []Member           `json:"members"`
+	Message Message            `json:"message" bson:"last_message"`
+	Status  status             `json:"status" `
+	Clients map[string]*Client `json:"clients"`
 }
+type Type string
+
+const (
+	PRIVATE Type = "PRIVATE"
+	GROUP   Type = "GROUP"
+	TEMP    Type = "TEMP"
+)
+
 type Room struct {
-	_Id       primitive.ObjectID `json:"_id"`
-	ID        string             `json:"Id" `
-	Name      string             `json:"name" `
-	Temporary bool               `json:"type" `
-	Members   []Member           `json:"members"`
-	Message   Message            `json:"message" bson:"last_message"`
-	Status    status             `json:"status,omitempty" `
-	Clients   map[string]*Client `json:"clients"`
-	Pinned    bool               `json:"pinned" bson:"pinned"`
+	_Id     primitive.ObjectID `json:"_id"`
+	ID      string             `json:"Id" `
+	Name    string             `json:"name" `
+	Type    Type               `json:"type" `
+	Members []Member           `json:"members"`
+	Message Message            `json:"message" bson:"last_message"`
+	Status  status             `json:"status,omitempty" `
+	Clients map[string]*Client `json:"clients"`
+	Pinned  bool               `json:"pinned" bson:"pinned"`
 }
 
 type RoomTemp struct {
@@ -87,9 +95,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-	//
-	//mqBroker.Consume()
+	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+
+	mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),

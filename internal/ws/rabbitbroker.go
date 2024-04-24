@@ -52,6 +52,7 @@ func (receiver *RabbitMqBroker) Consume() {
 				ID:      RoomRequest.Id,
 				Name:    RoomRequest.Name,
 				Members: RoomRequest.Member,
+				Type:    RoomRequest.Type,
 			}
 			receiver.MongoRepository.insertRoomInDb(room)
 			receiver.Room <- &room
