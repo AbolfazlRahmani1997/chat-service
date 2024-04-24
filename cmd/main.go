@@ -36,7 +36,7 @@ func main() {
 	go hub.Run()
 	go hub.Manager()
 	router.InitRouter(wsHandler)
-	err = router.Start("0.0.0.0:8088")
+	err = router.Start("0.0.0.0:8080")
 	if err != nil {
 		fmt.Println(err)
 		return
