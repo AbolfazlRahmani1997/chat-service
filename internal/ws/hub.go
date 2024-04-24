@@ -127,7 +127,7 @@ func (h *Hub) Run() {
 				message := h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
 				if user, ok := h.Users[message.ClientID]; ok {
 					go func() {
-						user.seenMessage <- &SeenNotification{MessageId: message.ID.Hex(), RoomId: message.RoomID}
+						user.seenMessage <- &SeenNotification{MessageId: message.UniqId, RoomId: message.RoomID}
 					}()
 				}
 
