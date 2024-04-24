@@ -5,22 +5,23 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
+	"os"
 	"server/internal/ws"
 	"server/router"
 )
 
 func main() {
 
-	//mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
-	//credential := options.Credential{
-	//	Username: os.Getenv("MONGO_DB_USERNAME"),
-	//	Password: os.Getenv("MONGO_DB_PASSWORD"),
-	//}
-	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", "127.0.0.1", "27017")
+	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
 	credential := options.Credential{
-		Username: "root",
-		Password: "root",
+		Username: os.Getenv("MONGO_DB_USERNAME"),
+		Password: os.Getenv("MONGO_DB_PASSWORD"),
 	}
+	//mongoUrl := fmt.Sprintf("mongodb://%s:%s/", "127.0.0.1", "27017")
+	//credential := options.Credential{
+	//	Username: "root",
+	//	Password: "root",
+	//}
 
 	//serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential)
