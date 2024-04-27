@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 type Member struct {
@@ -124,12 +125,15 @@ func (h *Hub) Run() {
 		select {
 		case messageId := <-h.ReadAble:
 			{
-				message := h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
-				if user, ok := h.Users[message.ClientID]; ok {
-					go func() {
-						user.seenMessage <- &SeenNotification{MessageId: message.UniqId, RoomId: message.RoomID}
-					}()
-				}
+				go func() {
+					message := h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
+					if user, ok := h.Users[message.ClientID]; ok {
+						go func() {
+							user.seenMessage <- &SeenNotification{MessageId: message.UniqId, RoomId: message.RoomID}
+						}()
+					}
+
+				}()
 
 			}
 		case room := <-h.Room:
@@ -141,10 +145,11 @@ func (h *Hub) Run() {
 					Members: room.Members,
 					Clients: make(map[string]*Client),
 				}
+				SyncedRoom := h.RoomService.SyncUser(*room)
 				for _, member := range room.Members {
 					if user, ok := h.Users[member.Id]; ok {
 						go func() {
-							user.createRoom <- room
+							user.createRoom <- &SyncedRoom
 						}()
 					}
 				}
@@ -169,21 +174,22 @@ func (h *Hub) Run() {
 				r.Clients[cl.ID] = cl
 				room := h.Rooms[cl.RoomID]
 				room.Status = online
-				h.RoomService.changeRoomStatus(*room)
-				members := h.Rooms[cl.RoomID].Members
+				go func() {
+					members := h.Rooms[cl.RoomID].Members
+					for _, member := range members {
+						if user, ok := h.Users[member.Id]; ok {
+							go func() {
+								user.roomStatuses <- &RoomStatus{
+									RoomId: h.Rooms[cl.RoomID].ID,
+									Status: online,
+								}
+							}()
 
-				for _, member := range members {
-					if user, ok := h.Users[member.Id]; ok {
-
-						go func() {
-							user.roomStatuses <- &RoomStatus{
-								RoomId: h.Rooms[cl.RoomID].ID,
-								Status: online,
-							}
-						}()
-
+						}
 					}
-				}
+
+				}()
+
 			}
 			//when user exit from chat page
 		case cl := <-h.Unregister:
@@ -213,6 +219,7 @@ func (h *Hub) Run() {
 			}
 		//when send message
 		case m := <-h.Broadcast:
+			m.CreatedAt = time.Now()
 			if _, ok := h.Rooms[m.RoomID]; ok {
 				if m.ID.IsZero() {
 					m.Deliver = nil
