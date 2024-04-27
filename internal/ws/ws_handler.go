@@ -116,7 +116,7 @@ func (Handler *Handler) JoinRoom(c *gin.Context) {
 
 	go Handler.hub.RoomService.SyncUser(room)
 	if _, ok := Handler.hub.Rooms[roomID]; !ok {
-		Handler.hub.Rooms[roomID] = &room
+		Handler.hub.Room <- &room
 	}
 	var cl *Client
 	var connectionPool map[string]*websocket.Conn

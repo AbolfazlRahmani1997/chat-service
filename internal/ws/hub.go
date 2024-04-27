@@ -145,12 +145,14 @@ func (h *Hub) Run() {
 					Members: room.Members,
 					Clients: make(map[string]*Client),
 				}
-				SyncedRoom := h.RoomService.SyncUser(*room)
-				for _, member := range room.Members {
-					if user, ok := h.Users[member.Id]; ok {
-						go func() {
-							user.createRoom <- &SyncedRoom
-						}()
+				if room._Id.IsZero() {
+					SyncedRoom := h.RoomService.SyncUser(*room)
+					for _, member := range room.Members {
+						if user, ok := h.Users[member.Id]; ok {
+							go func() {
+								user.createRoom <- &SyncedRoom
+							}()
+						}
 					}
 				}
 
