@@ -221,54 +221,57 @@ func (h *Hub) Run() {
 			}
 		//when send message
 		case m := <-h.Broadcast:
-			m.CreatedAt = time.Now()
-			if _, ok := h.Rooms[m.RoomID]; ok {
-				if m.ID.IsZero() {
-					m.Deliver = nil
-					m.Read = nil
-					m.ID = h.MessageService.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
-				}
-				h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
+			go func() {
+				m.CreatedAt = time.Now()
+				if _, ok := h.Rooms[m.RoomID]; ok {
+					if m.ID.IsZero() {
+						m.Deliver = nil
+						m.Read = nil
+						m.ID = h.MessageService.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
+					}
+					h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
 
-				members := h.Rooms[m.RoomID].Members
-				for _, userID := range members {
-					fmt.Println(userID.Notification)
-					if user, ok := h.Users[userID.Id]; ok {
-						fmt.Println("user exist in system")
-						if _, ok := h.Rooms[m.RoomID].Clients[user.UserId]; !ok {
-							fmt.Println("user  not exist in chat")
-							fmt.Println(user.UserId)
-							fmt.Println(m.ClientID)
-							if user.UserId != m.ClientID {
-								fmt.Println("fire income message")
-								go func() {
-									user.pupMessage <- &PupMessage{
-										MessageId: m.ID.Hex(),
-										RoomId:    m.RoomID,
-										Content:   m.Content,
-									}
-								}()
+					members := h.Rooms[m.RoomID].Members
+					for _, userID := range members {
+						fmt.Println(userID.Notification)
+						if user, ok := h.Users[userID.Id]; ok {
+							fmt.Println("user exist in system")
+							if _, ok := h.Rooms[m.RoomID].Clients[user.UserId]; !ok {
+								fmt.Println("user  not exist in chat")
+								fmt.Println(user.UserId)
+								fmt.Println(m.ClientID)
+								if user.UserId != m.ClientID {
+									fmt.Println("fire income message")
+									go func() {
+										user.pupMessage <- &PupMessage{
+											MessageId: m.ID.Hex(),
+											RoomId:    m.RoomID,
+											Content:   m.Content,
+										}
+									}()
 
+								}
 							}
+
+						}
+
+					}
+					for _, cl := range h.Rooms[m.RoomID].Clients {
+
+						if ok := cl.Status == online; ok {
+							if cl.ID != m.ClientID {
+								m.Deliver = append(m.Deliver, cl.ID)
+								h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
+							}
+							cl.Message <- m
+
 						}
 
 					}
 
 				}
-				for _, cl := range h.Rooms[m.RoomID].Clients {
+			}()
 
-					if ok := cl.Status == online; ok {
-						if cl.ID != m.ClientID {
-							m.Deliver = append(m.Deliver, cl.ID)
-							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
-						}
-						cl.Message <- m
-
-					}
-
-				}
-
-			}
 		}
 		//when join chat system for show online
 
