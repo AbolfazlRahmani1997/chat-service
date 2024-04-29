@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"server/internal/ws"
 	"strconv"
 	"time"
@@ -59,7 +60,7 @@ func Auth(handler ws.Handler) gin.HandlerFunc {
 		var user User
 		// Set example variable
 		client := &http.Client{}
-		getwayUrl := fmt.Sprintf("%s/api/user", "http://dev.oteacher.org/")
+		getwayUrl := fmt.Sprintf("%s/api/user", os.Getenv("GATEWAY_URL"))
 		request, err := http.NewRequest("GET", getwayUrl, nil)
 		request.Header.Set("Authorization", c.GetHeader("Authorization"))
 		if err != nil {
