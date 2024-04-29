@@ -1,0 +1,18 @@
+stages:
+  - lint
+  - analyze
+  - report
+  - build
+  # - test
+  - deploy
+
+.docker_login:
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+include:
+  - local: .ci/branch.yml
+  - local: .ci/cs.yml
+  - local: .ci/sonar.yml
+  - local: .ci/build.yml
+  - local: .ci/deploy.yml

@@ -1,51 +1,99 @@
 package ws
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/gorilla/websocket"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"time"
+)
 
-	"github.com/gorilla/websocket"
+type status string
+
+const (
+	online  status = "online"
+	offline status = "offline"
+	evade   status = "evade"
 )
 
 type Client struct {
-	Conn     *websocket.Conn
-	Message  chan *Message
-	ID       string `json:"id"`
-	RoomID   string `json:"roomId"`
-	Username string `json:"username"`
+	Conn          map[string]*websocket.Conn
+	ReadMessage   *websocket.Conn
+	Message       chan *Message
+	ChanelMessage chan *Message
+	ID            string `json:"id"`
+	RoomID        string `json:"roomId"`
+	Username      string `json:"username"`
+	Status        status `json:"status"`
 }
 
 type Message struct {
-	Content    string    `json:"content"`
-	RoomID     string    `json:"roomId"`
-	Username   string    `json:"username"`
-	Created_at time.Time `json:"created_at" bson:"created_at"`
-	Updated_at time.Time `json:"updated_at" bson:"updated_at"`
+	ID           primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
+	Content      string             `json:"Content,omitempty"  bson:"content"`
+	UniqId       string             `json:"UniqId"`
+	RoomID       string             `json:"RoomID,omitempty"  bson:"roomID"`
+	Username     string             `json:"Username,omitempty" bson:"username" `
+	ClientID     string             `json:"ClientID,omitempty" bson:"clientID"`
+	Deliver      []string           `json:"Deliver" bson:"Deliver"`
+	Read         []string           `json:"Read" bson:"Read"`
+	connectionId string
+	CreatedAt    time.Time `json:"CreatedAt"bson:"created_at"`
+	UpdatedAt    time.Time `bson:"updated_at"`
 }
 
 func (c *Client) writeMessage() {
 	defer func() {
-		c.Conn.Close()
+
 	}()
 
 	for {
 		message, ok := <-c.Message
+		c.writeInAll(message)
 		if !ok {
 			return
 		}
 
-		c.Conn.WriteJSON(message)
 	}
 }
 
-func (c *Client) readMessage(hub *Hub) {
-	defer func() {
-		hub.Unregister <- c
-		c.Conn.Close()
-	}()
+// write in all connection
+func (c *Client) writeInAll(m *Message) {
+	for i, conn := range c.Conn {
+		if m.connectionId != i {
+			err := conn.WriteJSON(m)
+			if err != nil {
 
+				break
+
+			}
+		}
+
+	}
+}
+
+type messageClient struct {
+	Ulid    string `json:"ulid"`
+	Content string `json:"content"`
+}
+
+func (c *Client) readerMessage(index string, hub *Hub) {
+	defer func() {
+		err := c.Conn[index].Close()
+		if err != nil {
+			return
+		}
+		delete(c.Conn, index)
+		fmt.Println("closed \t" + index)
+		if len(c.Conn) == 0 {
+			fmt.Println("Unregister \t" + index)
+			hub.Unregister <- c
+		}
+	}()
+	var messageDeliverClient messageClient
 	for {
-		_, m, err := c.Conn.ReadMessage()
+		_, message, err := c.Conn[index].ReadMessage()
+
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
@@ -53,11 +101,69 @@ func (c *Client) readMessage(hub *Hub) {
 			break
 		}
 
-		msg := &Message{
-			Content:  string(m),
-			RoomID:   c.RoomID,
-			Username: c.Username,
+		err = json.Unmarshal(message, &messageDeliverClient)
+		if err != nil {
+			fmt.Println(string(message))
+			fmt.Println(err)
+			return
 		}
-		hub.Broadcast <- msg
+		if messageDeliverClient.Ulid != "ping" {
+			msg := &Message{
+				Content:      messageDeliverClient.Content,
+				UniqId:       messageDeliverClient.Ulid,
+				connectionId: index,
+				RoomID:       c.RoomID,
+				Username:     c.Username,
+				ClientID:     c.ID,
+			}
+			c.ChanelMessage <- msg
+			systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
+			err = c.Conn[index].WriteJSON(systemMessage)
+
+		} else {
+			systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
+			err = c.Conn[index].WriteJSON(systemMessage)
+		}
+		if err != nil {
+
+			break
+		}
+
+	}
+}
+
+func (c *Client) readMessage(hub *Hub) {
+	defer func() {
+		hub.Unregister <- c
+	}()
+
+	for {
+		m, ok := <-c.ChanelMessage
+		if !ok {
+			break
+		}
+		hub.Broadcast <- m
+	}
+}
+
+func (c *Client) seenMessage(hub *Hub) {
+	defer func() {
+		c.ReadMessage.Close()
+	}()
+
+	for {
+		_, m, err := c.ReadMessage.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+			}
+			break
+		}
+		msg := &ReadMessage{
+			MessageId: string(m),
+			UserId:    c.ID,
+		}
+
+		hub.ReadAble <- msg
 	}
 }

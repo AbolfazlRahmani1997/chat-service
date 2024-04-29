@@ -1,34 +1,45 @@
 package main
 
 import (
+	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
-	"log"
-	"server/db"
-	"server/internal/user"
+	"os"
 	"server/internal/ws"
 	"server/router"
 )
 
 func main() {
-	dbConn, err := db.NewDatabase()
-	if err != nil {
-		log.Fatalf("could not initialize database connection: %s", err)
+
+	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
+	credential := options.Credential{
+		Username: os.Getenv("MONGO_DB_USERNAME"),
+		Password: os.Getenv("MONGO_DB_PASSWORD"),
 	}
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+	//mongoUrl := fmt.Sprintf("mongodb://%s:%s/", "127.0.0.1", "27017")
+	//credential := options.Credential{
+	//	Username: "root",
+	//	Password: "root",
+	//}
 
-	// Connect to MongoDB
+	//serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
-
-	userRep := user.NewRepository(dbConn.GetDB())
-	userSvc := user.NewService(userRep)
-	userHandler := user.NewHandler(userSvc)
-
+	if err != nil {
+		fmt.Println(err)
+	}
 	hub := ws.NewHub(client)
-	wsHandler := ws.NewHandler(hub)
-	go hub.Run()
 
-	router.InitRouter(userHandler, wsHandler)
-	router.Start("0.0.0.0:8080")
+	wsHandler := ws.NewHandler(hub)
+	go wsHandler.UpdateUserPool()
+	go hub.Run()
+	go hub.Manager()
+	router.InitRouter(wsHandler)
+	err = router.Start("0.0.0.0:8080")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 }
