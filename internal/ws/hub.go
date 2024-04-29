@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"os"
 	"time"
 )
 
@@ -87,18 +88,18 @@ type Hub struct {
 }
 
 func NewHub(client *mongo.Client) *Hub {
-	clientDatabase := client.Database("MessageDB")
+	clientDatabase := client.Database(os.Getenv("CHAT_DB"))
 	messageRepository := NewMessageRepository(clientDatabase)
-	userRepository := NewUserRepository(client.Database("main"))
+	userRepository := NewUserRepository(client.Database(os.Getenv("MAIN_DB")))
 	RoomRepository := NewRoomRepository(clientDatabase)
 	RoomService := NewRoomService(RoomRepository, messageRepository, userRepository)
 	service := MessageService{
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-	//
-	//mqBroker.Consume()
+	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+
+	mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
