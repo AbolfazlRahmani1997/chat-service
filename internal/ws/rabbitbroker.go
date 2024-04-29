@@ -32,7 +32,7 @@ func NewRabbitMqBroker(Room chan *Room, repository MessageRepository) RabbitMqBr
 func (receiver *RabbitMqBroker) Consume() {
 	ch, _ := receiver.connection.Channel()
 
-	mes, err := ch.Consume("chat-service-room", "", true, false, false, false, nil)
+	mes, err := ch.Consume(os.Getenv("RABBITMQ_QUEUE"), "", true, false, false, false, nil)
 
 	if err != nil {
 		fmt.Println(err)
