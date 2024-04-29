@@ -170,7 +170,7 @@ func (h *Hub) Run() {
 				} else {
 					r.Clients[cl.ID] = cl
 				}
-				for s, _ := range cl.Conn {
+				for s := range cl.Conn {
 					go cl.readerMessage(s, h)
 				}
 				r.Clients[cl.ID] = cl
@@ -294,7 +294,7 @@ func (h *Hub) Manager() {
 				go user.WireRooms(h)
 				h.Users[user.UserId] = user
 			}
-			for s, _ := range user.Conn {
+			for s := range user.Conn {
 				go user.userConnection(h, s)
 			}
 			go h.OnlineMessage(user.UserId, online)

@@ -36,7 +36,7 @@ func (r *RoomMongoRepository) GetMyRooms(userId string, page int, offset int) []
 
 	notPinedRoom := []bson.M{
 
-		bson.M{
+		{
 			"$match": bson.M{
 				"members": bson.M{
 					"$elemMatch": bson.M{
@@ -47,7 +47,7 @@ func (r *RoomMongoRepository) GetMyRooms(userId string, page int, offset int) []
 			},
 		},
 
-		bson.M{
+		{
 			"$sort": bson.M{
 				"last_message.created_at": -1,
 			},
@@ -83,7 +83,7 @@ func (r *RoomMongoRepository) GetMyRooms(userId string, page int, offset int) []
 func (r *RoomMongoRepository) GetMyPinRooms(userId string) []Room {
 	var rooms []Room
 	getPinedMessage := []bson.M{
-		bson.M{
+		{
 			"$match": bson.M{
 				"members": bson.M{
 					"$elemMatch": bson.M{
@@ -93,7 +93,7 @@ func (r *RoomMongoRepository) GetMyPinRooms(userId string) []Room {
 				},
 			},
 		},
-		bson.M{
+		{
 			"$sort": bson.M{
 				"last_message.created_at": -1,
 			},
