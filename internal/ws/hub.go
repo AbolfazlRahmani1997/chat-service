@@ -96,9 +96,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-
-	mqBroker.Consume()
+	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+	//
+	//mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),
@@ -149,9 +149,12 @@ func (h *Hub) Run() {
 					SyncedRoom := h.RoomService.SyncUser(*room)
 					for _, member := range room.Members {
 						if user, ok := h.Users[member.Id]; ok {
-							go func() {
-								user.createRoom <- &SyncedRoom
-							}()
+							fmt.Println(ok)
+							if user.IsConnected {
+								go func() {
+									user.createRoom <- &SyncedRoom
+								}()
+							}
 						}
 					}
 				}
@@ -233,15 +236,9 @@ func (h *Hub) Run() {
 
 					members := h.Rooms[m.RoomID].Members
 					for _, userID := range members {
-						fmt.Println(userID.Notification)
 						if user, ok := h.Users[userID.Id]; ok {
-							fmt.Println("user exist in system")
 							if _, ok := h.Rooms[m.RoomID].Clients[user.UserId]; !ok {
-								fmt.Println("user  not exist in chat")
-								fmt.Println(user.UserId)
-								fmt.Println(m.ClientID)
 								if user.UserId != m.ClientID {
-									fmt.Println("fire income message")
 									go func() {
 										user.pupMessage <- &PupMessage{
 											MessageId: m.ID.Hex(),
@@ -283,6 +280,9 @@ func (h *Hub) Manager() {
 		select {
 		case user, _ := <-h.Join:
 			if userExists, ok := h.Users[user.UserId]; ok {
+				if h.Users[user.UserId].IsConnected == false {
+					h.Users[user.UserId].IsConnected = true
+				}
 				userExists.Conn = mergeConnection(userExists.Conn, user.Conn)
 
 			} else {
@@ -302,10 +302,7 @@ func (h *Hub) Manager() {
 
 			go h.OnlineMessage(user.UserId, offline)
 			if len(user.Conn) == 0 {
-				close(user.createRoom)
-				close(user.chanelNotification)
-				close(user.pupMessage)
-				close(user.roomStatuses)
+				user.IsConnected = false
 			}
 			delete(h.Users, user.UserId)
 		case user, _ := <-h.Evade:

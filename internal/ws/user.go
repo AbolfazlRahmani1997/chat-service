@@ -40,6 +40,7 @@ type SeenNotification struct {
 }
 
 type User struct {
+	IsConnected        bool
 	Conn               map[string]*websocket.Conn
 	StatusConnection   *websocket.Conn
 	online             bool
@@ -60,7 +61,6 @@ func (User *User) WireRooms(h *Hub) {
 	for {
 		select {
 		case roomStatuses, ok := <-User.roomStatuses:
-
 			if ok {
 				wg.Add(1)
 				go User.writeInAll(&wg)
@@ -100,7 +100,6 @@ func (User *User) WireRooms(h *Hub) {
 
 func (User *User) writeInAll(wg *sync.WaitGroup) {
 	defer func() {
-
 		wg.Done()
 	}()
 
@@ -110,7 +109,11 @@ func (User *User) writeInAll(wg *sync.WaitGroup) {
 			for s, conn := range User.Conn {
 				err := conn.WriteJSON(sysMessage)
 				if err != nil {
+
 					delete(User.Conn, s)
+					if len(User.Conn) == 0 {
+						User.IsConnected = false
+					}
 				}
 			}
 		}

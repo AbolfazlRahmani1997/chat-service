@@ -103,6 +103,7 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 
 		err = json.Unmarshal(message, &messageDeliverClient)
 		if err != nil {
+			fmt.Println(string(message))
 			fmt.Println(err)
 			return
 		}
