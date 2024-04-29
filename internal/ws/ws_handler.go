@@ -53,7 +53,7 @@ func (Handler *Handler) UpdateUserPool() {
 	for {
 		select {
 		case <-ticker.C:
-			for i, _ := range Handler.UserHandler {
+			for i := range Handler.UserHandler {
 				if Handler.UserHandler[i].Time.Before(time.Now()) {
 					delete(Handler.UserHandler, i)
 				}
