@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
-	"github.com/oklog/ulid/v2"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+	"github.com/oklog/ulid/v2"
 )
 
 var upgrader = websocket.Upgrader{
@@ -382,7 +384,7 @@ func (Handler *Handler) getUser(token string) (UserRequest, error) {
 		return userRequest, nil
 	}
 	client := &http.Client{}
-	gateway := fmt.Sprintf("%s/api/user", "http://dev.oteacher.org")
+	gateway := fmt.Sprintf("%s/api/user", os.Getenv("GATEWAY_URL"))
 	request, err := http.NewRequest("GET", gateway, nil)
 	request.Header.Set("Authorization", token)
 	if err != nil {
