@@ -187,10 +187,12 @@ func (Handler *Handler) GetRooms(c *gin.Context) {
 	}
 	userId := strconv.Itoa(userAuthed.Id)
 	room := Handler.hub.RoomService.GetMyRoom(userId, "1")
-	err = conn.WriteJSON(room)
-	if err != nil {
-
-		return
+	if len(room) == 0 {
+		emptyArray := []string{}
+		err := conn.WriteJSON(emptyArray)
+		if err != nil {
+			return
+		}
 	}
 	var connectionPool map[string]*websocket.Conn
 	connectionPool = make(map[string]*websocket.Conn)
