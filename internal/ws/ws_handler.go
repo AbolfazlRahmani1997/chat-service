@@ -188,10 +188,16 @@ func (Handler *Handler) GetRooms(c *gin.Context) {
 		return
 	}
 	userId := strconv.Itoa(userAuthed.Id)
+
 	room := Handler.hub.RoomService.GetMyRoom(userId, "1")
 	if len(room) == 0 {
 		emptyArray := []string{}
 		err := conn.WriteJSON(emptyArray)
+		if err != nil {
+			return
+		}
+	} else {
+		err := conn.WriteJSON(room)
 		if err != nil {
 			return
 		}

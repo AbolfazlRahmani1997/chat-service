@@ -88,6 +88,7 @@ type Hub struct {
 }
 
 func NewHub(client *mongo.Client) *Hub {
+
 	clientDatabase := client.Database(os.Getenv("CHAT_DB"))
 	messageRepository := NewMessageRepository(clientDatabase)
 	userRepository := NewUserRepository(client.Database(os.Getenv("MAIN_DB")))
@@ -97,9 +98,9 @@ func NewHub(client *mongo.Client) *Hub {
 		messageRepository,
 	}
 	roomChan := make(chan *Room)
-	mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
-
-	mqBroker.Consume()
+	//mqBroker := NewRabbitMqBroker(roomChan, messageRepository)
+	//
+	//mqBroker.Consume()
 
 	return &Hub{
 		Rooms:          make(map[string]*Room),

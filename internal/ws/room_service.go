@@ -36,7 +36,6 @@ func (r RoomService) GetMyRoom(userId string, page string) []RoomResponse {
 		notDelivered := r.MessageRepository.Mongo.GetMessageNotCountDelivery(room.ID, userId)
 		Rooms = append(Rooms, RoomResponse{Id: roomSync.ID, Name: roomSync.Name, Members: roomSync.Members, NotDeliverMessage: notDelivered, LastMessage: room.Message, Status: room.Status})
 	}
-
 	return Rooms
 
 }
