@@ -4,16 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+	"github.com/oklog/ulid/v2"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"reflect"
 	"strconv"
 	"time"
-
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
-	"github.com/oklog/ulid/v2"
 )
 
 var upgrader = websocket.Upgrader{

@@ -3,7 +3,6 @@ module server
 go 1.19
 
 require (
-	github.com/Valgard/godotenv v0.0.0-20200511222744-8873b92a09c5
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-redis/redis v6.15.9+incompatible
@@ -17,7 +16,6 @@ require (
 )
 
 require (
-	github.com/Valgard/go-pcre v0.0.0-20200510215507-235e400e25e9 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
