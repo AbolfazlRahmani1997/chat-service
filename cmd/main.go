@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/Valgard/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
@@ -12,10 +11,7 @@ import (
 )
 
 func main() {
-	dotenv := godotenv.New()
-	if err := dotenv.Load("../.env"); err != nil {
 
-	}
 	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
 	credential := options.Credential{
 		Username: os.Getenv("MONGO_DB_USERNAME"),
@@ -34,6 +30,7 @@ func main() {
 	go hub.Manager()
 	router.InitRouter(wsHandler)
 	chatUrl := fmt.Sprintf("0.0.0.0:%s", os.Getenv("CHAT_WS_PORT"))
+	fmt.Println(chatUrl)
 	err = router.Start(chatUrl)
 	if err != nil {
 		fmt.Println(err)
