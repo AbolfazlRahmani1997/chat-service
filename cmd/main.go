@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/Valgard/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
@@ -11,19 +12,15 @@ import (
 )
 
 func main() {
+	dotenv := godotenv.New()
+	if err := dotenv.Load("../.env"); err != nil {
 
+	}
 	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
 	credential := options.Credential{
 		Username: os.Getenv("MONGO_DB_USERNAME"),
 		Password: os.Getenv("MONGO_DB_PASSWORD"),
 	}
-	//mongoUrl := fmt.Sprintf("mongodb://%s:%s/", "127.0.0.1", "27017")
-	//credential := options.Credential{
-	//	Username: "root",
-	//	Password: "root",
-	//}
-
-	//serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
@@ -36,7 +33,7 @@ func main() {
 	go hub.Run()
 	go hub.Manager()
 	router.InitRouter(wsHandler)
-	err = router.Start("0.0.0.0:8080")
+	err = router.Start("0.0.0.0:8088")
 	if err != nil {
 		fmt.Println(err)
 		return
