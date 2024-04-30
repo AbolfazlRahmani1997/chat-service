@@ -187,16 +187,6 @@ func (Handler *Handler) GetRooms(c *gin.Context) {
 	}
 	userId := strconv.Itoa(userAuthed.Id)
 	room := Handler.hub.RoomService.GetMyRoom(userId, "1")
-	if room == nil {
-		err := conn.Close()
-		if err != nil {
-			return
-		}
-		return
-	}
-	if err != nil {
-
-	}
 	err = conn.WriteJSON(room)
 	if err != nil {
 
