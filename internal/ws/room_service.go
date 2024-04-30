@@ -23,13 +23,7 @@ func (r RoomService) GetMyRoom(userId string, page string) []RoomResponse {
 	var Rooms []RoomResponse
 
 	pageA, _ := strconv.Atoi(page)
-	room := r.RoomRepository.GetMyPinRooms(userId)
-	if (len(room) < 4) && pageA == 1 {
-		roomList := r.RoomRepository.GetMyRooms(userId, pageA, 10-len(room))
-		room = append(room, roomList...)
-	} else {
-		room = r.RoomRepository.GetMyRooms(userId, pageA, 10-len(room))
-	}
+	room := r.RoomRepository.GetMyRooms(userId, pageA, 10)
 	for _, room := range room {
 		roomSync := r.SyncUser(room)
 		notDelivered := r.MessageRepository.Mongo.GetMessageNotCountDelivery(room.ID, userId)
