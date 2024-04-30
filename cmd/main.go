@@ -33,7 +33,8 @@ func main() {
 	go hub.Run()
 	go hub.Manager()
 	router.InitRouter(wsHandler)
-	err = router.Start("0.0.0.0:8088")
+	chatUrl := fmt.Sprintf("0.0.0.0:%s", os.Getenv("CHAT_WS_PORT"))
+	err = router.Start(chatUrl)
 	if err != nil {
 		fmt.Println(err)
 		return
