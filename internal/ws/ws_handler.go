@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"runtime/trace"
 	"strconv"
 	"time"
 )
@@ -183,6 +184,7 @@ func (Handler *Handler) GetRooms(c *gin.Context) {
 	userAuthed, err := Handler.getUser(token)
 	if err != nil {
 		conn.Close()
+		trace.Log(c, "debug", err.Error())
 		c.JSON(403, "cant authorization")
 		return
 	}
@@ -271,7 +273,7 @@ func (Handler *Handler) UpdateNotification(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	user, err := Handler.getUser(token)
 	if err != nil {
-		c.JSON(403, "cant authorization")
+		c.JSON(403, "un authorization")
 		return
 	}
 	var spefic SpecificationRoom
@@ -390,7 +392,7 @@ func (Handler *Handler) getUser(token string) (UserRequest, error) {
 	res, err := client.Do(request)
 	if res.StatusCode != 200 {
 		fmt.Println(res.StatusCode)
-		return user, errors.New("error from server")
+		return user, errors.New("server error")
 	}
 
 	if err != nil {
