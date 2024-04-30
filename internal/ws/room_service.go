@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"fmt"
 	"strconv"
 )
 
@@ -73,10 +72,10 @@ type SpecificationRoom struct {
 
 func (receiver RoomService) updateRoomSpecification(id string, userId string, notification SpecificationRoom) []Member {
 	var NewMember []Member
-	fmt.Println(userId)
 	room := receiver.RoomRepository.getById(id)
 	member := room.Members
 	var LastStatus SpecificationRoom
+
 	for _, m := range member {
 
 		if m.Id == userId {
@@ -87,7 +86,7 @@ func (receiver RoomService) updateRoomSpecification(id string, userId string, no
 			if notification.Pin == true {
 				if !m.Pin {
 					room := receiver.RoomRepository.GetMyPinRooms(userId)
-					if len(room) < 4 {
+					if len(room) <= 5 {
 						m.Pin = !m.Pin
 					}
 				} else {
