@@ -51,24 +51,24 @@ const (
 type Room struct {
 	_Id     primitive.ObjectID `json:"_id"`
 	ID      string             `json:"Id" `
-	Name    string             `json:"name" `
-	Type    Type               `json:"type" `
-	Members []Member           `json:"members"`
-	Message Message            `json:"message" bson:"last_message"`
-	Status  status             `json:"status,omitempty" `
-	Clients map[string]*Client `json:"clients"`
-	Pinned  bool               `json:"pinned" bson:"pinned"`
+	Name    string             `json:"Name" `
+	Type    Type               `json:"Type" `
+	Members []Member           `json:"Members"`
+	Message Message            `json:"Message" bson:"last_message"`
+	Status  status             `json:"Status,omitempty" `
+	Clients map[string]*Client `json:"Clients"`
+	Pinned  bool               `json:"Pinned" bson:"pinned"`
 }
 
 type RoomTemp struct {
 	_Id       primitive.ObjectID `json:"_id"`
 	ID        string             `json:"Id" `
-	Name      string             `json:"name" `
-	Temporary bool               `json:"type" `
-	Members   Member             `json:"members"`
-	Message   Message            `json:"message" bson:"last_message"`
-	Status    status             `json:"status,omitempty" `
-	Clients   map[string]*Client `json:"clients"`
+	Name      string             `json:"Name" `
+	Temporary bool               `json:"Type" `
+	Members   Member             `json:"Members"`
+	Message   Message            `json:"Message" bson:"last_message"`
+	Status    status             `json:"Status,omitempty" `
+	Clients   map[string]*Client `json:"Clients"`
 }
 
 type Hub struct {
