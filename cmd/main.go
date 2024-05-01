@@ -2,16 +2,20 @@ package main
 
 import (
 	"fmt"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
+	"log"
 	"os"
 	"server/internal/ws"
 	"server/router"
 )
 
 func main() {
-
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Print("No .env file found")
+	}
 	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
 	credential := options.Credential{
 		Username: os.Getenv("MONGO_DB_USERNAME"),

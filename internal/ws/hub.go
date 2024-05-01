@@ -305,10 +305,12 @@ func (h *Hub) Manager() {
 		case user, _ := <-h.Left:
 
 			go h.OnlineMessage(user.UserId, offline)
-			if len(user.Conn) == 0 {
-				user.IsConnected = false
+
+			if len(h.Users[user.UserId].Conn) == 0 {
+				delete(h.Users, user.UserId)
+				user = nil
 			}
-			delete(h.Users, user.UserId)
+
 		case user, _ := <-h.Evade:
 			go h.OnlineMessage(user.UserId, evade)
 		}

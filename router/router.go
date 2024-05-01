@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -17,8 +18,10 @@ var r *gin.Engine
 
 func InitRouter(wsHandler *ws.Handler) {
 	gin.SetMode(gin.ReleaseMode)
+	gin.DisableConsoleColor()
 	r = gin.Default()
-
+	f, _ := os.Create("gin.log")
+	gin.DefaultWriter = io.MultiWriter(f)
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{"GET", "POST"},
