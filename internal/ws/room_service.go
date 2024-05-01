@@ -17,6 +17,7 @@ type RoomResponse struct {
 	Status            status   `json:"Status"`
 	NotDeliverMessage int64    `json:"CountMessages"`
 	LastMessage       Message  `json:"Message"`
+	Type              Type     `json:"Type"`
 }
 
 func (r RoomService) GetMyRoom(userId string, page string) []RoomResponse {
@@ -27,7 +28,7 @@ func (r RoomService) GetMyRoom(userId string, page string) []RoomResponse {
 	for _, room := range room {
 		roomSync := r.SyncUser(room)
 		notDelivered := r.MessageRepository.Mongo.GetMessageNotCountDelivery(room.ID, userId)
-		Rooms = append(Rooms, RoomResponse{Id: roomSync.ID, Name: roomSync.Name, Members: roomSync.Members, NotDeliverMessage: notDelivered, LastMessage: room.Message, Status: room.Status})
+		Rooms = append(Rooms, RoomResponse{Id: roomSync.ID, Name: roomSync.Name, Members: roomSync.Members, NotDeliverMessage: notDelivered, LastMessage: room.Message, Type: room.Type, Status: room.Status})
 	}
 	return Rooms
 
