@@ -130,10 +130,11 @@ func (User *User) userConnection(h *Hub, connectionId string) {
 	defer func() {
 
 		User.Conn[connectionId].Close()
-		if len(User.Conn) < 1 {
+
+		if len(h.Users[User.UserId].Conn) == 1 {
 			h.Left <- User
 		}
-		delete(User.Conn, connectionId)
+		delete(h.Users[User.UserId].Conn, connectionId)
 
 	}()
 	var messageClient MessageReceive
