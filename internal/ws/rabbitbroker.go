@@ -54,9 +54,14 @@ func (receiver *RabbitMqBroker) Consume() {
 				Members: RoomRequest.Member,
 				Type:    RoomRequest.Type,
 			}
-			receiver.MongoRepository.insertRoomInDb(room)
 
-			receiver.Room <- &room
+			roomExist := receiver.MongoRepository.getRoom(room.ID)
+
+			if roomExist._Id.IsZero() {
+				receiver.MongoRepository.insertRoomInDb(room)
+
+				receiver.Room <- &room
+			}
 
 		}
 		wg.Wait()
