@@ -239,14 +239,26 @@ func (h *Hub) Run() {
 					h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
 
 					members := h.Rooms[m.RoomID].Members
+					var firstname string
+					var lastname string
 					for _, userID := range members {
+
+						if userID.Id == m.ClientID {
+
+							firstname = userID.FirstName
+							lastname = userID.LastName
+						}
+
 						if user, ok := h.Users[userID.Id]; ok {
 							if _, ok := h.Rooms[m.RoomID].Clients[user.UserId]; !ok {
 								if user.UserId != m.ClientID {
+
 									go func() {
 										user.pupMessage <- &PupMessage{
 											MessageId: m.ID.Hex(),
 											RoomId:    m.RoomID,
+											Firstname: firstname,
+											Lastname:  lastname,
 											Content:   m.Content,
 										}
 									}()

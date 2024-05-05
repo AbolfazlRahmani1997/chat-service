@@ -32,6 +32,8 @@ type SystemMessage struct {
 type PupMessage struct {
 	MessageId string `json:"message_id,omitempty"`
 	RoomId    string `json:"room_id,omitempty"`
+	Lastname  string `json:"lastname,omitempty"`
+	Firstname string `json:"firstname,omitempty"`
 	Content   string `json:"content"`
 }
 type SeenNotification struct {
