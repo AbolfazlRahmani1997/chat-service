@@ -2,12 +2,14 @@ package ws
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/oklog/ulid/v2"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
 	"time"
@@ -52,7 +54,7 @@ func (Handler *Handler) UpdateUserPool() {
 	for {
 		select {
 		case <-ticker.C:
-			for i, _ := range Handler.UserHandler {
+			for i := range Handler.UserHandler {
 				if Handler.UserHandler[i].Time.Before(time.Now()) {
 					delete(Handler.UserHandler, i)
 				}
@@ -94,7 +96,11 @@ func (Handler *Handler) JoinRoom(c *gin.Context) {
 
 	token := c.Query("token")
 	token = fmt.Sprintf("%s", token)
-	userAuthed := Handler.getUser(token)
+	userAuthed, err := Handler.getUser(token)
+	if err != nil {
+		conn.Close()
+		return
+	}
 	clientID := strconv.Itoa(userAuthed.Id)
 
 	page := c.Query("page")
@@ -156,17 +162,12 @@ func (Handler *Handler) JoinRoom(c *gin.Context) {
 	messages := Handler.hub.MessageService.MessageRepository.Mongo.GetMessageNotDelivery(roomID, clientID)
 	if ok := len(messages) != 0; ok {
 		for i := 0; i <= len(messages)-1; i++ {
-			Handler.hub.Broadcast <- &Message{
-				ID:        messages[i].ID,
-				Content:   messages[i].Content,
-				RoomID:    messages[i].RoomID,
-				Username:  messages[i].Username,
-				ClientID:  messages[i].ClientID,
-				Deliver:   messages[i].Deliver,
-				Read:      messages[i].Read,
-				CreatedAt: messages[i].CreatedAt,
-				UpdatedAt: messages[i].CreatedAt,
+			messages[i].Deliver = append(messages[i].Deliver, clientID)
+			_, err := Handler.hub.MessageService.MessageRepository.MessageDelivery(messages[i].ID.Hex(), messages[i].Deliver)
+			if err != nil {
+				return
 			}
+
 			if err != nil {
 				return
 			}
@@ -179,23 +180,25 @@ func (Handler *Handler) GetRooms(c *gin.Context) {
 	token := c.Query("token")
 	token = fmt.Sprintf("%s", token)
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	userAuthed := Handler.getUser(token)
+	userAuthed, err := Handler.getUser(token)
+	if err != nil {
+		conn.Close()
+		c.JSON(403, "cant authorization")
+		return
+	}
 	userId := strconv.Itoa(userAuthed.Id)
 	room := Handler.hub.RoomService.GetMyRoom(userId, "1")
-	if room == nil {
-		err := conn.Close()
+	if len(room) == 0 {
+		emptyArray := []string{}
+		err := conn.WriteJSON(emptyArray)
 		if err != nil {
 			return
 		}
-		return
-	}
-	if err != nil {
-		fmt.Println(err)
-	}
-	err = conn.WriteJSON(room)
-	if err != nil {
-		fmt.Println(err)
-		return
+	} else {
+		err := conn.WriteJSON(room)
+		if err != nil {
+			return
+		}
 	}
 	var connectionPool map[string]*websocket.Conn
 	connectionPool = make(map[string]*websocket.Conn)
@@ -212,7 +215,12 @@ func (Handler *Handler) SyncRoom(c *gin.Context) {
 	token := c.Query("token")
 	token = fmt.Sprintf("%s", token)
 	conn, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
-	userAuthed := Handler.getUser(token)
+	userAuthed, err := Handler.getUser(token)
+
+	if err != nil {
+		conn.Close()
+		return
+	}
 	userId := strconv.Itoa(userAuthed.Id)
 	if _, ok := Handler.hub.Users[userId]; !ok {
 		c.JSON(404, "not found")
@@ -231,6 +239,57 @@ func (Handler *Handler) ReadMessage(c *gin.Context) {
 	client := clients[userId]
 	client.ReadMessage = conn
 	client.seenMessage(Handler.hub)
+}
+
+func (Handler *Handler) UpdatePin(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	user, err := Handler.getUser(token)
+	if err != nil {
+		c.JSON(403, "cant authorization")
+		return
+	}
+	var spefic SpecificationRoom
+	spefic.Pin = true
+	roomId := c.Param("roomId")
+	userId := strconv.Itoa(user.Id)
+
+	newMember := Handler.hub.RoomService.updateRoomSpecification(roomId, userId, spefic)
+	if _, ok := Handler.hub.Rooms[roomId]; ok {
+		Handler.hub.Rooms[roomId].Members = newMember
+	}
+	for _, member := range newMember {
+		if member.Id == userId {
+			spefic.Pin = member.Pin
+			spefic.Notification = member.Notification
+		}
+	}
+	c.JSON(200, spefic)
+
+}
+func (Handler *Handler) UpdateNotification(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	user, err := Handler.getUser(token)
+	if err != nil {
+
+		c.JSON(403, "un authorization")
+		return
+	}
+	var spefic SpecificationRoom
+	spefic.Notification = true
+	roomId := c.Param("roomId")
+	userId := strconv.Itoa(user.Id)
+	newMember := Handler.hub.RoomService.updateRoomSpecification(roomId, userId, spefic)
+	if _, ok := Handler.hub.Rooms[roomId]; ok {
+		Handler.hub.Rooms[roomId].Members = newMember
+	}
+
+	for _, member := range newMember {
+		if member.Id == userId {
+			spefic.Pin = member.Pin
+			spefic.Notification = member.Notification
+		}
+	}
+	c.JSON(200, spefic)
 }
 
 type ClientRes struct {
@@ -314,35 +373,39 @@ type UserRequest struct {
 	Time      time.Time `json:"created_at"`
 }
 
-func (Handler *Handler) getUser(token string) UserRequest {
+func (Handler *Handler) getUser(token string) (UserRequest, error) {
 
 	var user UserRequest
 
 	if userRequest, ok := Handler.UserHandler[token]; ok {
-		return userRequest
+		return userRequest, nil
 	}
 	client := &http.Client{}
-	gateway := fmt.Sprintf("%s/api/user", "http://dev.oteacher.org")
+	gateway := fmt.Sprintf("%s/api/user", os.Getenv("GATEWAY_URL"))
+	fmt.Println("test")
+	fmt.Println(gateway)
 	request, err := http.NewRequest("GET", gateway, nil)
 	request.Header.Set("Authorization", token)
 	if err != nil {
-		fmt.Println(err)
-		return user
+		return user, err
 	}
 	res, err := client.Do(request)
-
 	fmt.Println(res.StatusCode)
+	if res.StatusCode != 200 {
+		return user, errors.New("server error")
+	}
+
 	if err != nil {
-		fmt.Println(err)
+		return user, err
 	}
 
 	body, _ := ioutil.ReadAll(res.Body)
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		fmt.Println(err)
+		return user, err
 	}
 	Handler.UserHandler[token] = user
 	Handler.UpdateUser(UserDto{UserId: strconv.Itoa(user.Id), UserName: user.UserName, FirstName: user.FirstName, LastName: user.LastName, AvatarUrl: user.Avatar})
-	return user
+	return user, nil
 
 }

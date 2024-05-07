@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -30,11 +31,12 @@ type Client struct {
 type Message struct {
 	ID           primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	Content      string             `json:"Content,omitempty"  bson:"content"`
+	UniqId       string             `json:"UniqId"`
 	RoomID       string             `json:"RoomID,omitempty"  bson:"roomID"`
 	Username     string             `json:"Username,omitempty" bson:"username" `
 	ClientID     string             `json:"ClientID,omitempty" bson:"clientID"`
-	Deliver      []string           `json:"Deliver,omitempty" bson:"Deliver"`
-	Read         []string           `json:"Read,omitempty" bson:"Read"`
+	Deliver      []string           `json:"Deliver" bson:"Deliver"`
+	Read         []string           `json:"Read" bson:"Read"`
 	connectionId string
 	CreatedAt    time.Time `json:"CreatedAt"bson:"created_at"`
 	UpdatedAt    time.Time `bson:"updated_at"`
@@ -70,39 +72,68 @@ func (c *Client) writeInAll(m *Message) {
 	}
 }
 
+type messageClient struct {
+	Ulid    string `json:"ulid"`
+	Content string `json:"content"`
+}
+
 func (c *Client) readerMessage(index string, hub *Hub) {
 	defer func() {
-		c.Conn[index].Close()
+		err := c.Conn[index].Close()
+		if err != nil {
+			return
+		}
 		delete(c.Conn, index)
+		fmt.Println("closed \t" + index)
 		if len(c.Conn) == 0 {
+			fmt.Println("Unregister \t" + index)
 			hub.Unregister <- c
 		}
 	}()
+	var messageDeliverClient messageClient
 	for {
 		_, message, err := c.Conn[index].ReadMessage()
+
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
-
 			}
 			break
 		}
-		msg := &Message{
-			Content:      string(message),
-			connectionId: index,
-			RoomID:       c.RoomID,
-			Username:     c.Username,
-			ClientID:     c.ID,
-		}
 
-		c.ChanelMessage <- msg
+		err = json.Unmarshal(message, &messageDeliverClient)
+		if err != nil {
+			fmt.Println(string(message))
+			fmt.Println(err)
+			return
+		}
+		if messageDeliverClient.Ulid != "ping" {
+			msg := &Message{
+				Content:      messageDeliverClient.Content,
+				UniqId:       messageDeliverClient.Ulid,
+				connectionId: index,
+				RoomID:       c.RoomID,
+				Username:     c.Username,
+				ClientID:     c.ID,
+			}
+			c.ChanelMessage <- msg
+			systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
+			err = c.Conn[index].WriteJSON(systemMessage)
+
+		} else {
+			systemMessage := SystemMessage{EventType: deliverMessage, Content: messageDeliverClient.Ulid}
+			err = c.Conn[index].WriteJSON(systemMessage)
+		}
+		if err != nil {
+
+			break
+		}
 
 	}
 }
 
 func (c *Client) readMessage(hub *Hub) {
 	defer func() {
-		fmt.Println("client is close")
 		hub.Unregister <- c
 	}()
 
@@ -111,7 +142,6 @@ func (c *Client) readMessage(hub *Hub) {
 		if !ok {
 			break
 		}
-
 		hub.Broadcast <- m
 	}
 }

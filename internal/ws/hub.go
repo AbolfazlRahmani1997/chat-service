@@ -5,14 +5,18 @@ import (
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"os"
+	"time"
 )
 
 type Member struct {
-	Id        string   `json:"Id"`
-	Roles     []string `json:"roles"`
-	FirstName string   `json:"firstname"`
-	LastName  string   `json:"lastname"`
-	AvatarUrl string   `json:"AvatarUrl"bson:"avatar_url"`
+	Id           string   `json:"Id"`
+	Roles        []string `json:"roles"`
+	FirstName    string   `json:"firstname"`
+	LastName     string   `json:"lastname"`
+	AvatarUrl    string   `json:"AvatarUrl"bson:"avatar_url"`
+	Notification bool     `json:"Notification"`
+	Pin          bool     `json:"Pin"`
 }
 
 type ReadMessage struct {
@@ -27,24 +31,44 @@ type RoomStatus struct {
 }
 
 type RoomModel struct {
-	ID        primitive.ObjectID `json:"_id"`
-	RoomId    string             `json:"id"`
-	Name      string             `json:"name" `
-	Temporary bool               `json:"type" `
-	Members   []Member           `json:"members"`
-	Message   Message            `json:"message" bson:"last_message"`
-	Status    status             `json:"status" `
-	Clients   map[string]*Client `json:"clients"`
+	ID      primitive.ObjectID `json:"_id"`
+	RoomId  string             `json:"id"`
+	Name    string             `json:"name" `
+	Type    Type               `json:"type" `
+	Members []Member           `json:"members"`
+	Message Message            `json:"message" bson:"last_message"`
+	Status  status             `json:"status" `
+	Clients map[string]*Client `json:"clients"`
 }
+type Type string
+
+const (
+	PRIVATE Type = "PRIVATE"
+	GROUP   Type = "GROUP"
+	TEMP    Type = "TEMP"
+)
+
 type Room struct {
+	_Id     primitive.ObjectID `json:"_id"`
+	ID      string             `json:"Id" `
+	Name    string             `json:"Name" `
+	Type    Type               `json:"Type" `
+	Members []Member           `json:"Members"`
+	Message Message            `json:"Message" bson:"last_message"`
+	Status  status             `json:"Status,omitempty" `
+	Clients map[string]*Client `json:"Clients"`
+	Pinned  bool               `json:"Pinned" bson:"pinned"`
+}
+
+type RoomTemp struct {
 	_Id       primitive.ObjectID `json:"_id"`
 	ID        string             `json:"Id" `
-	Name      string             `json:"name" `
-	Temporary bool               `json:"type" `
-	Members   []Member           `json:"members"`
-	Message   Message            `json:"message" bson:"last_message"`
-	Status    status             `json:"status,omitempty" `
-	Clients   map[string]*Client `json:"clients"`
+	Name      string             `json:"Name" `
+	Temporary bool               `json:"Type" `
+	Members   Member             `json:"Members"`
+	Message   Message            `json:"Message" bson:"last_message"`
+	Status    status             `json:"Status,omitempty" `
+	Clients   map[string]*Client `json:"Clients"`
 }
 
 type Hub struct {
@@ -64,9 +88,10 @@ type Hub struct {
 }
 
 func NewHub(client *mongo.Client) *Hub {
-	clientDatabase := client.Database("MessageDB")
+
+	clientDatabase := client.Database(os.Getenv("CHAT_DB"))
 	messageRepository := NewMessageRepository(clientDatabase)
-	userRepository := NewUserRepository(client.Database("main"))
+	userRepository := NewUserRepository(client.Database(os.Getenv("MAIN_DB")))
 	RoomRepository := NewRoomRepository(clientDatabase)
 	RoomService := NewRoomService(RoomRepository, messageRepository, userRepository)
 	service := MessageService{
@@ -102,7 +127,15 @@ func (h *Hub) Run() {
 		select {
 		case messageId := <-h.ReadAble:
 			{
-				h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
+				go func() {
+					message := h.MessageService.MessageRead(messageId.MessageId, messageId.UserId)
+					if user, ok := h.Users[message.ClientID]; ok {
+						go func() {
+							user.seenMessage <- &SeenNotification{MessageId: message.UniqId, RoomId: message.RoomID}
+						}()
+					}
+
+				}()
 
 			}
 		case room := <-h.Room:
@@ -113,6 +146,19 @@ func (h *Hub) Run() {
 					Name:    room.Name,
 					Members: room.Members,
 					Clients: make(map[string]*Client),
+				}
+				if room._Id.IsZero() {
+					SyncedRoom := h.RoomService.SyncUser(*room)
+					for _, member := range room.Members {
+						if user, ok := h.Users[member.Id]; ok {
+							fmt.Println(ok)
+							if user.IsConnected {
+								go func() {
+									user.createRoom <- &SyncedRoom
+								}()
+							}
+						}
+					}
 				}
 
 			}
@@ -129,33 +175,35 @@ func (h *Hub) Run() {
 				} else {
 					r.Clients[cl.ID] = cl
 				}
-				for s, _ := range cl.Conn {
+				for s := range cl.Conn {
 					go cl.readerMessage(s, h)
 				}
 				r.Clients[cl.ID] = cl
 				room := h.Rooms[cl.RoomID]
 				room.Status = online
-				h.RoomService.changeRoomStatus(*room)
-				members := h.Rooms[cl.RoomID].Members
-
-				for _, member := range members {
-					if user, ok := h.Users[member.Id]; ok {
-
-						go func() {
-							user.roomStatuses <- &RoomStatus{
-								RoomId: h.Rooms[cl.RoomID].ID,
-								Status: online,
+				go func() {
+					members := h.Rooms[cl.RoomID].Members
+					for _, member := range members {
+						if user, ok := h.Users[member.Id]; ok {
+							if cl.ID != user.UserId {
+								go func() {
+									user.roomStatuses <- &RoomStatus{
+										RoomId: h.Rooms[cl.RoomID].ID,
+										Status: online,
+									}
+								}()
 							}
-						}()
 
+						}
 					}
-				}
+
+				}()
+
 			}
 			//when user exit from chat page
 		case cl := <-h.Unregister:
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				if _, ok := h.Rooms[cl.RoomID].Clients[cl.ID]; ok {
-					fmt.Println(cl.Status)
 					close(cl.Message)
 					delete(h.Rooms[cl.RoomID].Clients, cl.ID)
 				}
@@ -180,50 +228,63 @@ func (h *Hub) Run() {
 			}
 		//when send message
 		case m := <-h.Broadcast:
-			if _, ok := h.Rooms[m.RoomID]; ok {
-				if m.ID.IsZero() {
-					m.Deliver = nil
-					m.Read = nil
-					m.ID = h.MessageService.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
+			go func() {
+				m.CreatedAt = time.Now()
+				if _, ok := h.Rooms[m.RoomID]; ok {
+					if m.ID.IsZero() {
+						m.Deliver = nil
+						m.Read = nil
+						m.ID = h.MessageService.MessageRepository.insertMessageInDb(*m).InsertedID.(primitive.ObjectID)
+					}
+					h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
 
-				}
-				h.RoomService.UpdateLastMessage(*h.Rooms[m.RoomID], *m)
+					members := h.Rooms[m.RoomID].Members
+					var firstname string
+					var lastname string
+					for _, userID := range members {
 
-				members := h.Rooms[m.RoomID].Members
-				for _, userID := range members {
-					if user, ok := h.Users[userID.Id]; ok {
+						if userID.Id == m.ClientID {
 
-						if h.Rooms[m.RoomID].Clients[user.UserId] == nil {
-							if user.UserId != m.ClientID {
-								go func() {
-									user.pupMessage <- &PupMessage{
-										MessageId: m.ID.Hex(),
-										RoomId:    m.RoomID,
-										Content:   m.Content,
-									}
+							firstname = userID.FirstName
+							lastname = userID.LastName
+						}
 
-								}()
+						if user, ok := h.Users[userID.Id]; ok {
+							if _, ok := h.Rooms[m.RoomID].Clients[user.UserId]; !ok {
+								if user.UserId != m.ClientID {
 
+									go func() {
+										user.pupMessage <- &PupMessage{
+											MessageId: m.ID.Hex(),
+											RoomId:    m.RoomID,
+											Firstname: firstname,
+											Lastname:  lastname,
+											Content:   m.Content,
+										}
+									}()
+
+								}
 							}
+
 						}
 
 					}
-				}
-				for _, cl := range h.Rooms[m.RoomID].Clients {
+					for _, cl := range h.Rooms[m.RoomID].Clients {
 
-					if ok := cl.Status == online; ok {
-						if cl.ID != m.ClientID {
-							m.Deliver = append(m.Deliver, cl.ID)
+						if ok := cl.Status == online; ok {
+							if cl.ID != m.ClientID {
+								m.Deliver = append(m.Deliver, cl.ID)
+								h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
+							}
+							cl.Message <- m
 
-							h.MessageService.MessageDelivery(m.ID.Hex(), m.Deliver)
 						}
-						cl.Message <- m
 
 					}
 
 				}
+			}()
 
-			}
 		}
 		//when join chat system for show online
 
@@ -235,23 +296,33 @@ func (h *Hub) Manager() {
 		select {
 		case user, _ := <-h.Join:
 			if userExists, ok := h.Users[user.UserId]; ok {
+				if h.Users[user.UserId].IsConnected == false {
+					h.Users[user.UserId].IsConnected = true
+				}
 				userExists.Conn = mergeConnection(userExists.Conn, user.Conn)
 
 			} else {
-
 				user.roomStatuses = make(chan *RoomStatus)
 				user.pupMessage = make(chan *PupMessage)
 				user.chanelNotification = make(chan *SystemMessage)
+				user.createRoom = make(chan *Room)
+				user.seenMessage = make(chan *SeenNotification)
 				go user.WireRooms(h)
 				h.Users[user.UserId] = user
 			}
-			for s, _ := range user.Conn {
+			for s := range user.Conn {
 				go user.userConnection(h, s)
 			}
 			go h.OnlineMessage(user.UserId, online)
 		case user, _ := <-h.Left:
+
 			go h.OnlineMessage(user.UserId, offline)
-			delete(h.Users, user.UserId)
+
+			if len(h.Users[user.UserId].Conn) == 0 {
+				delete(h.Users, user.UserId)
+				user = nil
+			}
+
 		case user, _ := <-h.Evade:
 			go h.OnlineMessage(user.UserId, evade)
 		}

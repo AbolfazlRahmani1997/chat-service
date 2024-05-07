@@ -1,5 +1,9 @@
 package ws
 
+import (
+	"strconv"
+)
+
 type RoomService struct {
 	RoomRepository    RoomMongoRepository
 	MemberRepository  UserRepository
@@ -13,18 +17,19 @@ type RoomResponse struct {
 	Status            status   `json:"Status"`
 	NotDeliverMessage int64    `json:"CountMessages"`
 	LastMessage       Message  `json:"Message"`
+	Type              Type     `json:"Type"`
 }
 
 func (r RoomService) GetMyRoom(userId string, page string) []RoomResponse {
-
 	var Rooms []RoomResponse
-	room := r.RoomRepository.GetMyRooms(userId, page)
+
+	pageA, _ := strconv.Atoi(page)
+	room := r.RoomRepository.GetMyRooms(userId, pageA, 10)
 	for _, room := range room {
 		roomSync := r.SyncUser(room)
 		notDelivered := r.MessageRepository.Mongo.GetMessageNotCountDelivery(room.ID, userId)
-		Rooms = append(Rooms, RoomResponse{Id: roomSync.ID, Name: roomSync.Name, Members: roomSync.Members, NotDeliverMessage: notDelivered, LastMessage: room.Message, Status: room.Status})
+		Rooms = append(Rooms, RoomResponse{Id: roomSync.ID, Name: roomSync.Name, Members: roomSync.Members, NotDeliverMessage: notDelivered, LastMessage: room.Message, Type: room.Type, Status: room.Status})
 	}
-
 	return Rooms
 
 }
@@ -53,6 +58,46 @@ func (receiver RoomService) SyncUser(room Room) Room {
 	room.Members = newMember
 	go receiver.RoomRepository.updateMember(room)
 	return room
+}
+
+type SpecificationRoom struct {
+	Notification bool `json:"Notification"`
+	Pin          bool `json:"Pin"`
+}
+
+func (receiver RoomService) updateRoomSpecification(id string, userId string, notification SpecificationRoom) []Member {
+	var NewMember []Member
+	room := receiver.RoomRepository.getById(id)
+	member := room.Members
+	var LastStatus SpecificationRoom
+
+	for _, m := range member {
+
+		if m.Id == userId {
+			if notification.Notification == true {
+				m.Notification = !m.Notification
+				LastStatus.Notification = m.Notification
+			}
+			if notification.Pin == true {
+				if !m.Pin {
+					room := receiver.RoomRepository.GetMyPinRooms(userId)
+					if len(room) <= 5 {
+						m.Pin = !m.Pin
+					}
+				} else {
+					m.Pin = !m.Pin
+				}
+
+				LastStatus.Pin = m.Pin
+			}
+
+		}
+		NewMember = append(NewMember, m)
+	}
+
+	room.Members = NewMember
+	receiver.RoomRepository.updateMember(room)
+	return NewMember
 }
 
 func (r RoomService) changeRoomStatus(room Room) {
