@@ -2,14 +2,14 @@ package Dtos
 
 import (
 	"go.mongodb.org/mongo-driver/bson"
-	"server/entity"
+	"server/entity/Room"
 )
 
 type GetAllRoomDto struct {
 }
 
 type GetAllRoomFilterDto struct {
-	Id       string `json:"Id"`
+	Id       string `json:"Id,"`
 	MemberId string `json:"MemberId"`
 }
 
@@ -27,8 +27,8 @@ func (receiver GetAllRoomFilterDto) GetFilter() bson.M {
 }
 
 type UpdateRoomDto struct {
-	Id   string      `json:"Id,omitempty"`
-	Room entity.Room `json:"Room,omitempty"`
+	Id   string    `json:"Id,omitempty"`
+	Room Room.Room `json:"Room,omitempty"`
 }
 
 func (receiver UpdateRoomDto) GetUpdate() {

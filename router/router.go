@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"server/internal/admin"
 	"server/internal/ws"
 	"strconv"
 	"time"
@@ -16,7 +17,7 @@ import (
 
 var r *gin.Engine
 
-func InitRouter(wsHandler *ws.Handler) {
+func InitRouter(wsHandler *ws.Handler, admin *admin.Handler) {
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
 	r = gin.Default()
@@ -44,6 +45,11 @@ func InitRouter(wsHandler *ws.Handler) {
 	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
 	r.GET("/chat/room/pin/:roomId", wsHandler.UpdatePin)
 	r.GET("/chat/room/notification/:roomId", wsHandler.UpdateNotification)
+
+	adminRoutes := r.Group("/chat/admin")
+	rooms := adminRoutes.Group("rooms")
+	rooms.GET("/", admin.FetchRooms)
+	rooms.GET("/:id", admin.FindRoom)
 }
 
 func Start(addr string) error {

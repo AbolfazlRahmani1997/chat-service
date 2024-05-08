@@ -2,7 +2,7 @@ package services
 
 import (
 	"server/Dtos"
-	"server/entity"
+	"server/entity/Room"
 	"server/ports"
 )
 
@@ -15,21 +15,19 @@ func NewRoomService(RoomRepository ports.RoomRepositoryPort) ports.RoomServicePo
 	return RoomService{RoomRepository: RoomRepository}
 
 }
-func (receiver RoomService) RetrieveRoom(id string) entity.Room {
+func (receiver RoomService) RetrieveRoom(id string) Room.Room {
 	room := receiver.RoomRepository.GetRoom(id)
 	return room
 }
 
-func (receiver RoomService) FetchAllRooms(filter Dtos.GetAllRoomFilterDto) []entity.Room {
+func (receiver RoomService) FetchAllRooms(page int, offset int, filter Dtos.GetAllRoomFilterDto) []Room.Room {
 
-	rooms := receiver.RoomRepository.GetAllRooms(filter)
-
+	rooms := receiver.RoomRepository.GetAllRooms(page, offset, filter)
 	return rooms
 }
 
-func (receiver RoomService) EditRooms(filter Dtos.UpdateRoomDto) []entity.Room {
+func (receiver RoomService) EditRooms(filter Dtos.UpdateRoomDto) []Room.Room {
 
 	rooms := receiver.RoomRepository.Update(filter)
-
 	return rooms
 }

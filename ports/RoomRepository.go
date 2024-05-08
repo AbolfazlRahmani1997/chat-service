@@ -2,17 +2,17 @@ package ports
 
 import (
 	"server/Dtos"
-	"server/entity"
+	"server/entity/Room"
 )
 
 type RoomRepositoryPort interface {
-	GetRoom(id string) entity.Room
-	GetAllRooms(filter Dtos.GetAllRoomFilterDto) []entity.Room
-	Update(Update Dtos.UpdateRoomDto) []entity.Room
+	GetRoom(id string) Room.Room
+	GetAllRooms(page int, offset int, filter Dtos.GetAllRoomFilterDto) []Room.Room
+	Update(Update Dtos.UpdateRoomDto) []Room.Room
 }
 
 type RoomServicePort interface {
-	RetrieveRoom(id string) entity.Room
-	FetchAllRooms(filter Dtos.GetAllRoomFilterDto) []entity.Room
-	EditRooms(filter Dtos.UpdateRoomDto) []entity.Room
+	RetrieveRoom(id string) Room.Room
+	FetchAllRooms(page int, offset int, filter Dtos.GetAllRoomFilterDto) []Room.Room
+	EditRooms(filter Dtos.UpdateRoomDto) []Room.Room
 }

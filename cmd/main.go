@@ -8,8 +8,11 @@ import (
 	"golang.org/x/net/context"
 	"log"
 	"os"
+	"server/adapters/repositories"
+	"server/internal/admin"
 	"server/internal/ws"
 	"server/router"
+	"server/services"
 )
 
 func main() {
@@ -27,12 +30,15 @@ func main() {
 		fmt.Println(err)
 	}
 	hub := ws.NewHub(client)
-
+	roomRepository := repositories.NewRoomRepository(client)
+	roomService := services.NewRoomService(roomRepository)
+	adminHandler := admin.NewHandler(hub, roomService)
 	wsHandler := ws.NewHandler(hub)
+
 	go wsHandler.UpdateUserPool()
 	go hub.Run()
 	go hub.Manager()
-	router.InitRouter(wsHandler)
+	router.InitRouter(wsHandler, adminHandler)
 	chatUrl := fmt.Sprintf("0.0.0.0:%s", os.Getenv("CHAT_WS_PORT"))
 	fmt.Println(chatUrl)
 	err = router.Start(chatUrl)
