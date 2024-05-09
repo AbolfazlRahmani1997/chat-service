@@ -50,7 +50,7 @@ func (Handler *Handler) UpdateUser(dto UserDto) {
 
 // Store UpdateUserPool in this Pool
 func (Handler *Handler) UpdateUserPool() {
-	ticker := time.NewTicker((60 * 60) * time.Second)
+	ticker := time.NewTicker((60 * 30) * time.Second)
 	for {
 		select {
 		case <-ticker.C:
@@ -183,7 +183,8 @@ func (Handler *Handler) GetRooms(c *gin.Context) {
 	userAuthed, err := Handler.getUser(token)
 	if err != nil {
 		conn.Close()
-		c.JSON(403, "cant authorization")
+		c.AbortWithStatus(401)
+
 		return
 	}
 	userId := strconv.Itoa(userAuthed.Id)
@@ -365,12 +366,13 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 }
 
 type UserRequest struct {
-	Id        int       `json:"id"`
-	Avatar    string    `json:"avatar"`
-	FirstName string    `json:"firstname"`
-	LastName  string    `json:"lastname"`
-	UserName  string    `json:"username"`
-	Time      time.Time `json:"created_at"`
+	Id             int       `json:"id"`
+	Avatar         string    `json:"avatar"`
+	FirstName      string    `json:"firstname"`
+	LastName       string    `json:"lastname"`
+	UserName       string    `json:"username"`
+	Time           time.Time `json:"created_at"`
+	LastStatusCode int
 }
 
 func (Handler *Handler) getUser(token string) (UserRequest, error) {
@@ -382,8 +384,6 @@ func (Handler *Handler) getUser(token string) (UserRequest, error) {
 	}
 	client := &http.Client{}
 	gateway := fmt.Sprintf("%s/api/user", os.Getenv("GATEWAY_URL"))
-	fmt.Println("test")
-	fmt.Println(gateway)
 	request, err := http.NewRequest("GET", gateway, nil)
 	request.Header.Set("Authorization", token)
 	if err != nil {
@@ -392,6 +392,10 @@ func (Handler *Handler) getUser(token string) (UserRequest, error) {
 	res, err := client.Do(request)
 	fmt.Println(res.StatusCode)
 	if res.StatusCode != 200 {
+		user.LastStatusCode = res.StatusCode
+		user.Time = time.Now()
+		fmt.Println(user)
+		Handler.UserHandler[token] = user
 		return user, errors.New("server error")
 	}
 
@@ -404,6 +408,8 @@ func (Handler *Handler) getUser(token string) (UserRequest, error) {
 	if err != nil {
 		return user, err
 	}
+	user.LastStatusCode = res.StatusCode
+	user.Time = time.Now()
 	Handler.UserHandler[token] = user
 	Handler.UpdateUser(UserDto{UserId: strconv.Itoa(user.Id), UserName: user.UserName, FirstName: user.FirstName, LastName: user.LastName, AvatarUrl: user.Avatar})
 	return user, nil
