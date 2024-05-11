@@ -42,6 +42,7 @@ type SeenNotification struct {
 }
 
 type User struct {
+	mx                 sync.Mutex
 	IsConnected        bool
 	Conn               map[string]*websocket.Conn
 	StatusConnection   *websocket.Conn
@@ -130,13 +131,16 @@ type MessageReceive struct {
 
 func (User *User) userConnection(h *Hub, connectionId string) {
 	defer func() {
-
+		User.mx.Lock()
 		User.Conn[connectionId].Close()
 
 		if len(h.Users[User.UserId].Conn) == 1 {
 			h.Left <- User
 		}
-		delete(h.Users[User.UserId].Conn, connectionId)
+		if _, exist := h.Users[User.UserId].Conn[connectionId]; exist {
+			delete(h.Users[User.UserId].Conn, connectionId)
+		}
+		User.mx.Unlock()
 
 	}()
 	var messageClient MessageReceive

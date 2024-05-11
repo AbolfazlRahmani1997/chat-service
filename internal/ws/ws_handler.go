@@ -390,7 +390,7 @@ func (Handler *Handler) getUser(token string) (UserRequest, error) {
 		return user, err
 	}
 	res, err := client.Do(request)
-	fmt.Println(res.StatusCode)
+
 	if res.StatusCode != 200 {
 		user.LastStatusCode = res.StatusCode
 		user.Time = time.Now()
