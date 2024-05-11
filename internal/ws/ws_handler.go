@@ -382,15 +382,14 @@ func (Handler *Handler) getUser(token string) (UserRequest, error) {
 	}
 	client := &http.Client{}
 	gateway := fmt.Sprintf("%s/api/user", os.Getenv("GATEWAY_URL"))
-	fmt.Println("test")
-	fmt.Println(gateway)
+
 	request, err := http.NewRequest("GET", gateway, nil)
 	request.Header.Set("Authorization", token)
 	if err != nil {
 		return user, err
 	}
 	res, err := client.Do(request)
-	fmt.Println(res.StatusCode)
+
 	if res.StatusCode != 200 {
 		return user, errors.New("server error")
 	}

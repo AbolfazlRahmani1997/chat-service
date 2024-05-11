@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -153,7 +152,7 @@ func (h *Hub) Run() {
 					SyncedRoom := h.RoomService.SyncUser(*room)
 					for _, member := range room.Members {
 						if user, ok := h.Users[member.Id]; ok {
-							fmt.Println(ok)
+
 							if user.IsConnected {
 								go func() {
 									user.createRoom <- &SyncedRoom
@@ -316,11 +315,11 @@ func (h *Hub) Manager() {
 			for s := range user.Conn {
 				go user.userConnection(h, s)
 			}
-			//go h.OnlineMessage(user.UserId, online)
+			go h.OnlineMessage(user.UserId, online)
 			h.mx.Unlock()
 		case user, _ := <-h.Left:
 			h.mx.Lock()
-			//go h.OnlineMessage(user.UserId, offline)
+			go h.OnlineMessage(user.UserId, offline)
 
 			if len(h.Users[user.UserId].Conn) == 0 {
 				delete(h.Users, user.UserId)
