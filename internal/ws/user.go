@@ -41,6 +41,11 @@ type SeenNotification struct {
 	RoomId    string `json:"room_id,omitempty"`
 }
 
+type UserConnection struct {
+	Userid       string
+	ConnectionId string
+}
+
 type User struct {
 	mx                 sync.Mutex
 	IsConnected        bool
@@ -132,10 +137,13 @@ type MessageReceive struct {
 func (User *User) userConnection(h *Hub, connectionId string) {
 	defer func() {
 		User.mx.Lock()
-		User.Conn[connectionId].Close()
+		err := User.Conn[connectionId].Close()
+		if err != nil {
+			return
+		}
 
 		if len(h.Users[User.UserId].Conn) == 1 {
-			h.Left <- User
+			h.Left <- &UserConnection{Userid: User.UserId, ConnectionId: connectionId}
 		}
 		if _, exist := h.Users[User.UserId].Conn[connectionId]; exist {
 			delete(h.Users[User.UserId].Conn, connectionId)
@@ -170,6 +178,8 @@ func (User *User) userConnection(h *Hub, connectionId string) {
 		var message []byte
 		_, message, err := User.Conn[connectionId].ReadMessage()
 		if err != nil {
+
+			fmt.Println(err)
 			break
 		}
 		if len(message) > 0 {
