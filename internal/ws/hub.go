@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -72,6 +73,7 @@ type RoomTemp struct {
 }
 
 type Hub struct {
+	mx             sync.RWMutex
 	Users          map[string]*User
 	Rooms          map[string]*Room
 	Register       chan *Client
@@ -225,9 +227,11 @@ func (h *Hub) Run() {
 						}()
 					}
 				}
+
 			}
 		//when send message
 		case m := <-h.Broadcast:
+
 			go func() {
 				m.CreatedAt = time.Now()
 				if _, ok := h.Rooms[m.RoomID]; ok {
@@ -283,8 +287,8 @@ func (h *Hub) Run() {
 					}
 
 				}
-			}()
 
+			}()
 		}
 		//when join chat system for show online
 
@@ -295,10 +299,9 @@ func (h *Hub) Manager() {
 	for {
 		select {
 		case user, _ := <-h.Join:
+
+			h.mx.Lock()
 			if userExists, ok := h.Users[user.UserId]; ok {
-				if h.Users[user.UserId].IsConnected == false {
-					h.Users[user.UserId].IsConnected = true
-				}
 				userExists.Conn = mergeConnection(userExists.Conn, user.Conn)
 
 			} else {
@@ -313,15 +316,17 @@ func (h *Hub) Manager() {
 			for s := range user.Conn {
 				go user.userConnection(h, s)
 			}
-			go h.OnlineMessage(user.UserId, online)
+			//go h.OnlineMessage(user.UserId, online)
+			h.mx.Unlock()
 		case user, _ := <-h.Left:
-
-			go h.OnlineMessage(user.UserId, offline)
+			h.mx.Lock()
+			//go h.OnlineMessage(user.UserId, offline)
 
 			if len(h.Users[user.UserId].Conn) == 0 {
 				delete(h.Users, user.UserId)
 				user = nil
 			}
+			h.mx.Unlock()
 
 		case user, _ := <-h.Evade:
 			go h.OnlineMessage(user.UserId, evade)
