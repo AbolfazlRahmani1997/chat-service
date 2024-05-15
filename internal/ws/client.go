@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
@@ -84,9 +83,8 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 			return
 		}
 		delete(c.Conn, index)
-		fmt.Println("closed \t" + index)
+
 		if len(c.Conn) == 0 {
-			fmt.Println("Unregister \t" + index)
 			hub.Unregister <- c
 		}
 	}()
@@ -103,8 +101,6 @@ func (c *Client) readerMessage(index string, hub *Hub) {
 
 		err = json.Unmarshal(message, &messageDeliverClient)
 		if err != nil {
-			fmt.Println(string(message))
-			fmt.Println(err)
 			return
 		}
 		if messageDeliverClient.Ulid != "ping" {

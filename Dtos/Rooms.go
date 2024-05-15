@@ -1,6 +1,7 @@
 package Dtos
 
 import (
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"server/entity/Room"
 )
@@ -31,16 +32,16 @@ type UpdateRoomDto struct {
 	Room Room.Room `json:"Room,omitempty"`
 }
 
-func (receiver UpdateRoomDto) GetUpdate() {
-	filters := bson.M{}
-
+func (receiver UpdateRoomDto) GetUpdate() bson.D {
+	filters := bson.D{}
+	fmt.Println(receiver.Room.Name)
 	if receiver.Room.Name != "" {
-		filters["name"] = receiver.Room.Name
+		filters = append(filters, bson.E{Key: "name", Value: receiver.Room.Name})
 	}
 	if receiver.Room.Status != "" {
-		filters["status"] = receiver.Room.Status
 
 	}
+	return filters
 
 }
 

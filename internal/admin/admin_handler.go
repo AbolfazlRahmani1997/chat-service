@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"server/Dtos"
+	"server/entity/Room"
 	"server/helper"
 	"server/internal/ws"
 	"server/ports"
@@ -20,18 +21,28 @@ func NewHandler(hub *ws.Hub, roomService ports.RoomServicePort) *Handler {
 }
 
 func (receiver Handler) FindRoom(c *gin.Context) {
-	//var Request Dtos.GetAllRoomFilterDto
 
 	room := receiver.roomService.RetrieveRoom(c.Param("id"))
-	receiver.wrapper.SetResource(room.ToTransformer())
+	receiver.wrapper.SetResource(&room)
 	c.JSON(200, receiver.wrapper.GetResource())
 
 }
 
 func (receiver Handler) FetchRooms(c *gin.Context) {
 	dto := new(Dtos.GetAllRoomFilterDto)
-	rooms := receiver.roomService.FetchAllRooms(1, 10, *dto)
+	var rooms []Room.Room
+	err := c.BindJSON(dto)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
+	rooms = receiver.roomService.FetchAllRooms(1, 10, *dto)
+	var data []interface{}
+	for _, room := range rooms {
+		data = append(data, room)
+	}
+	receiver.wrapper.SetCollectionResource(data)
 	c.JSON(200, rooms)
 }
 

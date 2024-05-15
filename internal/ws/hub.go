@@ -1,11 +1,11 @@
 package ws
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -72,12 +72,13 @@ type RoomTemp struct {
 }
 
 type Hub struct {
+	mx             sync.RWMutex
 	Users          map[string]*User
 	Rooms          map[string]*Room
 	Register       chan *Client
 	ReadAble       chan *ReadMessage
 	Join           chan *User
-	Left           chan *User
+	Left           chan *UserConnection
 	Evade          chan *User
 	Unregister     chan *Client
 	Broadcast      chan *Message
@@ -109,7 +110,7 @@ func NewHub(client *mongo.Client) *Hub {
 		Unregister:     make(chan *Client),
 		Broadcast:      make(chan *Message, 5),
 		Join:           make(chan *User),
-		Left:           make(chan *User),
+		Left:           make(chan *UserConnection),
 		Evade:          make(chan *User),
 		Users:          make(map[string]*User),
 		Room:           roomChan,
@@ -151,7 +152,7 @@ func (h *Hub) Run() {
 					SyncedRoom := h.RoomService.SyncUser(*room)
 					for _, member := range room.Members {
 						if user, ok := h.Users[member.Id]; ok {
-							fmt.Println(ok)
+
 							if user.IsConnected {
 								go func() {
 									user.createRoom <- &SyncedRoom
@@ -225,9 +226,11 @@ func (h *Hub) Run() {
 						}()
 					}
 				}
+
 			}
 		//when send message
 		case m := <-h.Broadcast:
+
 			go func() {
 				m.CreatedAt = time.Now()
 				if _, ok := h.Rooms[m.RoomID]; ok {
@@ -283,8 +286,8 @@ func (h *Hub) Run() {
 					}
 
 				}
-			}()
 
+			}()
 		}
 		//when join chat system for show online
 
@@ -295,10 +298,9 @@ func (h *Hub) Manager() {
 	for {
 		select {
 		case user, _ := <-h.Join:
+
+			h.mx.Lock()
 			if userExists, ok := h.Users[user.UserId]; ok {
-				if h.Users[user.UserId].IsConnected == false {
-					h.Users[user.UserId].IsConnected = true
-				}
 				userExists.Conn = mergeConnection(userExists.Conn, user.Conn)
 
 			} else {
@@ -311,17 +313,20 @@ func (h *Hub) Manager() {
 				h.Users[user.UserId] = user
 			}
 			for s := range user.Conn {
+
 				go user.userConnection(h, s)
 			}
 			go h.OnlineMessage(user.UserId, online)
+			h.mx.Unlock()
 		case user, _ := <-h.Left:
-
-			go h.OnlineMessage(user.UserId, offline)
-
-			if len(h.Users[user.UserId].Conn) == 0 {
-				delete(h.Users, user.UserId)
+			h.mx.Lock()
+			go h.OnlineMessage(user.Userid, offline)
+			delete(h.Users[user.Userid].Conn, user.ConnectionId)
+			if len(h.Users[user.Userid].Conn) == 0 {
+				delete(h.Users, user.Userid)
 				user = nil
 			}
+			h.mx.Unlock()
 
 		case user, _ := <-h.Evade:
 			go h.OnlineMessage(user.UserId, evade)
