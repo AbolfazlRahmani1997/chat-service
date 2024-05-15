@@ -1,15 +1,15 @@
 package router
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"server/internal/admin"
+	"os"
 	"server/internal/ws"
-	"strconv"
+	"strings"
 	"time"
 )
 
@@ -17,12 +17,15 @@ var r *gin.Engine
 
 func InitRouter(wsHandler *ws.Handler, adminHandler admin.Handler) {
 	gin.SetMode(gin.ReleaseMode)
+	gin.DisableConsoleColor()
 	r = gin.Default()
-
+	f, _ := os.Create("gin.log")
+	gin.DefaultWriter = io.MultiWriter(f)
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST"},
-		AllowHeaders:     []string{"Content-Type"},
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{"GET", "POST"},
+		AllowHeaders: []string{"*"},
+
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
@@ -30,42 +33,38 @@ func InitRouter(wsHandler *ws.Handler, adminHandler admin.Handler) {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
-	//r.Use(Auth(*wsHandler))
+
 	//todo:create from rabbitmq
 	r.POST("/chat/ws/createRoom", wsHandler.CreateRoom)
 	r.GET("/chat/ws/joinRoom/:roomId", wsHandler.JoinRoom)
 	r.GET("/chat/ws/seenMessage/:roomId", wsHandler.ReadMessage)
-	r.GET("/chat/ws/getRooms/", wsHandler.GetRooms)
+	r.GET("/chat/ws/getRooms/", PGPToken(), wsHandler.GetRooms)
 	r.GET("/chat/ws/syncRooms/", wsHandler.SyncRoom)
 	r.GET("/chat/ws/getClients/:roomId", wsHandler.GetClients)
-	adminRoute := r.Group("api/admin")
-	adminRoute.GET("/room/:roomId", adminHandler.FindRoom)
-	adminRoute.GET("/room", adminHandler.FetchRooms)
-	adminRoute.PUT("/room/:roomId", adminHandler.EditRoom)
-	//r.GET("api/admin/chat/user", func(context *gin.Context) {
-	//	data := context.GetHeader("Authorization")
-	//	s := strings.Split(data, ".")
-	//	type user struct {
-	//		UserId int `json:"user_id"`
-	//	}
-	//	var userTest user
-	//	text := fmt.Sprintf(s[1])
-	//	decodeString, err := base64.URLEncoding.DecodeString(text)
-	//	if err != nil {
-	//	}
-	//	dat := decodeString[:len(decodeString)-1]
-	//	t := string(dat) + "}"
-	//
-	//	err = json.Unmarshal([]byte(t), &userTest)
-	//	if err != nil {
-	//		fmt.Println(err)
-	//	}
-	//	context.JSON(200, userTest)
-	//})
+	r.GET("/chat/room/pin/:roomId", wsHandler.UpdatePin)
+	r.GET("/chat/room/notification/:roomId", wsHandler.UpdateNotification)
 }
 
 func Start(addr string) error {
 	return r.Run(addr)
+}
+
+func PGPToken() gin.HandlerFunc {
+
+	return func(c *gin.Context) {
+		token := c.Query("token")
+		if token != "" {
+			data := strings.Split(token, ".")
+			if len(data) != 3 {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token is required"})
+				return
+
+			}
+			c.Next()
+		}
+
+		c.Next()
+	}
 }
 
 func Auth(handler ws.Handler) gin.HandlerFunc {
@@ -78,35 +77,14 @@ func Auth(handler ws.Handler) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		var user User
-		// Set example variable
-		client := &http.Client{}
-		getwayUrl := fmt.Sprintf("%s/api/user", "http://dev.oteacher.org/")
-		request, err := http.NewRequest("GET", getwayUrl, nil)
-		request.Header.Set("Authorization", c.GetHeader("Authorization"))
-		if err != nil {
-			fmt.Println(err)
-			return
+		token := c.Query("token")
+		user, ok := handler.UserHandler[token]
+		fmt.Print(ok)
+		if ok {
+			if user.LastStatusCode == 500 {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token is required"})
+			}
 		}
-		res, err := client.Do(request)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println("sendRequest")
-		fmt.Println(res.Body)
-		body, _ := ioutil.ReadAll(res.Body)
-		derr := json.Unmarshal(body, &user)
-
-		if derr != nil {
-			fmt.Println(derr)
-		}
-
-		c.Set("userId", strconv.Itoa(user.Id))
-		c.Set("Avatar", user.Avatar)
-		c.Set("FirstName", user.FirstName)
-		c.Set("LastName", user.LastName)
-		c.Set("username", user.UserName)
-		handler.UpdateUser(ws.UserDto{UserId: strconv.Itoa(user.Id), UserName: user.UserName, FirstName: user.FirstName, LastName: user.LastName, AvatarUrl: user.Avatar})
 		c.Next()
 
 	}

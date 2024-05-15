@@ -7,21 +7,21 @@ import (
 	"golang.org/x/net/context"
 	"server/adapters"
 	"server/internal/admin"
+	"log"
+	"os"
 	"server/internal/ws"
 	"server/router"
-	"server/services"
 )
 
 func main() {
-
-	//mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
-
-	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", "127.0.0.1", "27017")
-	credential := options.Credential{
-		Username: "root",
-		Password: "root",
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Print("No .env file found")
 	}
-	//serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+	mongoUrl := fmt.Sprintf("mongodb://%s:%s/", os.Getenv("MONGO_DB_HOST"), os.Getenv("MONGO_DB_PORT"))
+	credential := options.Credential{
+		Username: os.Getenv("MONGO_DB_USERNAME"),
+		Password: os.Getenv("MONGO_DB_PASSWORD"),
+	}
 	clientOptions := options.Client().ApplyURI(mongoUrl).SetAuth(credential)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
@@ -35,8 +35,10 @@ func main() {
 	go wsHandler.UpdateUserPool()
 	go hub.Run()
 	go hub.Manager()
-	router.InitRouter(wsHandler, wsAdminHandler)
-	err = router.Start("0.0.0.0:8088")
+	router.InitRouter(wsHandler)
+	chatUrl := fmt.Sprintf("0.0.0.0:%s", os.Getenv("CHAT_WS_PORT"))
+	fmt.Println(chatUrl)
+	err = router.Start(chatUrl)
 	if err != nil {
 		fmt.Println(err)
 		return

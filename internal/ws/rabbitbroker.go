@@ -32,7 +32,7 @@ func NewRabbitMqBroker(Room chan *Room, repository MessageRepository) RabbitMqBr
 func (receiver *RabbitMqBroker) Consume() {
 	ch, _ := receiver.connection.Channel()
 
-	mes, err := ch.Consume("chat-service-room", "", true, false, false, false, nil)
+	mes, err := ch.Consume(os.Getenv("RABBITMQ_QUEUE"), "", true, false, false, false, nil)
 
 	if err != nil {
 		fmt.Println(err)
@@ -48,11 +48,20 @@ func (receiver *RabbitMqBroker) Consume() {
 			if err != nil {
 				fmt.Println(err)
 			}
-			receiver.MongoRepository.insertRoomInDb(Room{
+			room := Room{
 				ID:      RoomRequest.Id,
 				Name:    RoomRequest.Name,
 				Members: RoomRequest.Member,
-			})
+				Type:    RoomRequest.Type,
+			}
+
+			roomExist := receiver.MongoRepository.getRoom(room.ID)
+
+			if roomExist._Id.IsZero() {
+				receiver.MongoRepository.insertRoomInDb(room)
+
+				receiver.Room <- &room
+			}
 
 		}
 		wg.Wait()

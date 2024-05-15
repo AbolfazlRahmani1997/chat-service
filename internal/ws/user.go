@@ -16,10 +16,12 @@ type messagePop struct {
 }
 
 const (
-	roomStatus    eventType = "roomStatus"
-	incomeMessage eventType = "incomeMessage"
-	listRooms     eventType = "listRooms"
-	seenMessage   eventType = "seenMessage"
+	roomStatus     eventType = "roomStatus"
+	incomeMessage  eventType = "incomeMessage"
+	listRooms      eventType = "listRooms"
+	seenMessage    eventType = "seenMessage"
+	deliverMessage eventType = "deliverMessage"
+	createNewRoom  eventType = "createNewRoom"
 )
 
 type SystemMessage struct {
@@ -30,33 +32,55 @@ type SystemMessage struct {
 type PupMessage struct {
 	MessageId string `json:"message_id,omitempty"`
 	RoomId    string `json:"room_id,omitempty"`
+	Lastname  string `json:"lastname,omitempty"`
+	Firstname string `json:"firstname,omitempty"`
 	Content   string `json:"content"`
+}
+type SeenNotification struct {
+	MessageId string `json:"message_id,omitempty"`
+	RoomId    string `json:"room_id,omitempty"`
+}
+
+type UserConnection struct {
+	Userid       string
+	ConnectionId string
 }
 
 type User struct {
+	mx                 sync.Mutex
+	IsConnected        bool
 	Conn               map[string]*websocket.Conn
 	StatusConnection   *websocket.Conn
 	online             bool
 	UserId             string `json:"UserId"`
 	roomStatuses       chan *RoomStatus
+	createRoom         chan *Room
 	chanelNotification chan *SystemMessage
 	pupMessage         chan *PupMessage
+	seenMessage        chan *SeenNotification
 	roomList           chan bool
 }
 
 func (User *User) WireRooms(h *Hub) {
 	defer func() {
-		h.Left <- User
+
 	}()
 	var wg sync.WaitGroup
 	for {
 		select {
 		case roomStatuses, ok := <-User.roomStatuses:
-
 			if ok {
 				wg.Add(1)
 				go User.writeInAll(&wg)
 				User.chanelNotification <- &SystemMessage{EventType: roomStatus, Content: roomStatuses}
+				wg.Wait()
+			}
+		case roomStatuses, ok := <-User.createRoom:
+
+			if ok {
+				wg.Add(1)
+				go User.writeInAll(&wg)
+				User.chanelNotification <- &SystemMessage{EventType: createNewRoom, Content: roomStatuses}
 				wg.Wait()
 			}
 		case notification, ok := <-User.pupMessage:
@@ -68,6 +92,15 @@ func (User *User) WireRooms(h *Hub) {
 					wg.Wait()
 				}
 			}
+		case notification, ok := <-User.seenMessage:
+			{
+				if ok {
+					wg.Add(1)
+					go User.writeInAll(&wg)
+					User.chanelNotification <- &SystemMessage{EventType: seenMessage, Content: notification}
+					wg.Wait()
+				}
+			}
 
 		}
 	}
@@ -75,7 +108,6 @@ func (User *User) WireRooms(h *Hub) {
 
 func (User *User) writeInAll(wg *sync.WaitGroup) {
 	defer func() {
-
 		wg.Done()
 	}()
 
@@ -85,7 +117,11 @@ func (User *User) writeInAll(wg *sync.WaitGroup) {
 			for s, conn := range User.Conn {
 				err := conn.WriteJSON(sysMessage)
 				if err != nil {
+
 					delete(User.Conn, s)
+					if len(User.Conn) == 0 {
+						User.IsConnected = false
+					}
 				}
 			}
 		}
@@ -100,13 +136,19 @@ type MessageReceive struct {
 
 func (User *User) userConnection(h *Hub, connectionId string) {
 	defer func() {
-
-		User.Conn[connectionId].Close()
-		delete(User.Conn, connectionId)
-
-		if len(User.Conn) == 0 {
-			h.Left <- User
+		User.mx.Lock()
+		err := User.Conn[connectionId].Close()
+		if err != nil {
+			return
 		}
+
+		if len(h.Users[User.UserId].Conn) == 1 {
+			h.Left <- &UserConnection{Userid: User.UserId, ConnectionId: connectionId}
+		}
+		if _, exist := h.Users[User.UserId].Conn[connectionId]; exist {
+			delete(h.Users[User.UserId].Conn, connectionId)
+		}
+		User.mx.Unlock()
 
 	}()
 	var messageClient MessageReceive
@@ -119,7 +161,6 @@ func (User *User) userConnection(h *Hub, connectionId string) {
 			case listRooms:
 				_, err := strconv.Atoi(item)
 				if err != nil {
-					fmt.Println("err")
 					break
 				}
 				err = User.Conn[connectionId].WriteJSON(SystemMessage{EventType: listRooms, Content: h.RoomService.GetMyRoom(User.UserId, item)})
@@ -137,12 +178,14 @@ func (User *User) userConnection(h *Hub, connectionId string) {
 		var message []byte
 		_, message, err := User.Conn[connectionId].ReadMessage()
 		if err != nil {
+
+			fmt.Println(err)
 			break
 		}
 		if len(message) > 0 {
 			err = json.Unmarshal(message, &messageClient)
 			if err != nil {
-				fmt.Println(err)
+
 				break
 			}
 			eventRequest = messageClient.RequestType
