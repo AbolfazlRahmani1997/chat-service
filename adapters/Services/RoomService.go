@@ -1,17 +1,18 @@
-package services
+package Services
 
 import (
 	"fmt"
 	"server/Dtos"
 	"server/entity/Room"
-	"server/ports"
+	"server/ports/reporisoties"
+	"server/ports/services"
 )
 
 type RoomService struct {
-	RoomRepository ports.RoomRepositoryPort
+	RoomRepository reporisoties.RoomRepositoryPort
 }
 
-func NewRoomService(RoomRepository ports.RoomRepositoryPort) ports.RoomServicePort {
+func NewRoomService(RoomRepository reporisoties.RoomRepositoryPort) services.RoomServicePort {
 
 	return RoomService{RoomRepository: RoomRepository}
 

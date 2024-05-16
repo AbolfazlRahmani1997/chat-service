@@ -8,11 +8,11 @@ import (
 	"golang.org/x/net/context"
 	"log"
 	"os"
-	"server/adapters/repositories"
+	"server/adapters/Reporisotires"
+	"server/adapters/Services"
 	"server/internal/admin"
 	"server/internal/ws"
 	"server/router"
-	"server/services"
 )
 
 func main() {
@@ -30,9 +30,11 @@ func main() {
 		fmt.Println(err)
 	}
 	hub := ws.NewHub(client)
-	roomRepository := repositories.NewRoomRepository(client)
-	roomService := services.NewRoomService(roomRepository)
-	adminHandler := admin.NewHandler(hub, roomService)
+	roomRepository := Reporisotires.NewRoomRepository(client)
+	roomService := Services.NewRoomService(roomRepository)
+	messageRepository := Reporisotires.NewMessageRepository(client)
+	messageService := Services.NewMessageService(messageRepository)
+	adminHandler := admin.NewHandler(hub, roomService, messageService)
 	wsHandler := ws.NewHandler(hub)
 
 	go wsHandler.UpdateUserPool()
